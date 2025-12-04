@@ -1752,7 +1752,10 @@
                 
                 if (error) throw error;
                 
-                // キャンセルメール送信
+                // ===============================
+                // キャンセルメール送信（テスト時は無効化）
+                // ===============================
+                /*
                 if (window.emailJSEnabled) {
                     try {
                         await emailjs.send('service_ppi835a', 'template_jcdlzq6', {
@@ -1768,6 +1771,8 @@
                         console.error('メール送信エラー:', emailError);
                     }
                 }
+                */
+                console.log('📧 キャンセルメール送信はテスト用にスキップされました');
                 
                 // モーダル閉じる
                 document.getElementById('cancelModal').style.display = 'none';

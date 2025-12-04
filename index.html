@@ -1606,6 +1606,10 @@
                     return;
                 }
                 
+                // ===============================
+                // メール送信機能（テスト時は無効化）
+                // ===============================
+                /*
                 emailjs.send('service_ppi835a', 'template_jcdlzq6', {
                     name: name,
                     phone: phone,
@@ -1631,6 +1635,16 @@
                     resultDiv.style.background = '#fff3cd';
                     resultDiv.style.borderColor = '#ffeaa7';
                 });
+                */
+                
+                // テスト用：メール送信なしで成功メッセージ表示
+                console.log('📧 メール送信はテスト用にスキップされました');
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（テスト用：メール送信無効）';
+                resultDiv.style.display = 'block';
+                resultDiv.style.color = '#28a745';
+                resultDiv.style.background = '#d4edda';
+                resultDiv.style.borderColor = '#c3e6cb';
                 document.getElementById('reserveForm').reset();
                 // 時間帯再描画
                 document.getElementById('date').dispatchEvent(new Event('change'));
