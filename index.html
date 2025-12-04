@@ -1222,7 +1222,7 @@
                 }
                 
                 let times = [];
-                if (day >= 1 && day <= 5) { // 平日（9:00-18:30）
+                if (day >= 1 && day <= 5) { // 平日（9:00-18:30）se
                     for (let h = 9; h <= 18; h++) {
                         times.push(`${h.toString().padStart(2, '0')}:00`);
                         times.push(`${h.toString().padStart(2, '0')}:30`);
@@ -1581,31 +1581,31 @@
                     return;
                 }
                 
-                // emailjs.send('service_ppi835a', 'template_jcdlzq6', {
-                //     name: name,
-                //     phone: phone,
-                //     datetime: datetime,
-                //     course: course,
-                //     to_email: 'yoshitaka.t.free888@gmail.com',
-                //     user_email: email,
-                //     message: `新しい予約が入りました。\n\n【予約内容】\nお名前: ${name}\n電話番号: ${phone}\n予約日時: ${datetime.replace('T', ' ')}\nコース: ${course}\nメール: ${email}`
-                // }).then(function(response) {
-                //     console.log('メール送信成功:', response);
-                //     const resultDiv = document.getElementById('result');
-                //     resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）';
-                //     resultDiv.style.display = 'block';
-                //     resultDiv.style.color = '#28a745';
-                //     resultDiv.style.background = '#d4edda';
-                //     resultDiv.style.borderColor = '#c3e6cb';
-                // }, function(error) {
-                //     console.error('メール送信エラー:', error);
-                //     const resultDiv = document.getElementById('result');
-                //     resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small>`;
-                //     resultDiv.style.display = 'block';
-                //     resultDiv.style.color = '#856404';
-                //     resultDiv.style.background = '#fff3cd';
-                //     resultDiv.style.borderColor = '#ffeaa7';
-                // });
+                emailjs.send('service_ppi835a', 'template_jcdlzq6', {
+                    name: name,
+                    phone: phone,
+                    datetime: datetime,
+                    course: course,
+                    to_email: 'nagomi.y.c.j.t@gmail.com',
+                    user_email: email,
+                    message: `新しい予約が入りました。\n\n【予約内容】\nお名前: ${name}\n電話番号: ${phone}\n予約日時: ${datetime.replace('T', ' ')}\nコース: ${course}\nメール: ${email}`
+                }).then(function(response) {
+                    console.log('メール送信成功:', response);
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#28a745';
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.borderColor = '#c3e6cb';
+                }, function(error) {
+                    console.error('メール送信エラー:', error);
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small>`;
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#856404';
+                    resultDiv.style.background = '#fff3cd';
+                    resultDiv.style.borderColor = '#ffeaa7';
+                });
                 document.getElementById('reserveForm').reset();
                 // 時間帯再描画
                 document.getElementById('date').dispatchEvent(new Event('change'));
