@@ -1,0 +1,26 @@
+# Netlify設定ファイル
+# プロジェクトルートに配置
+
+[build]
+  # 静的サイトなのでビルドコマンドは不要
+  publish = "."
+  
+[[redirects]]
+  # SPAのルーティング対応（必要に応じて）
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  
+[[headers]]
+  # セキュリティヘッダー
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+# 環境変数の設定例（Netlifyダッシュボードで設定）
+# SUPABASE_URL = "本番用SupabaseのURL"
+# SUPABASE_KEY = "本番用Supabaseのanon key"
+# EMAILJS_PUBLIC_KEY = "本番用EmailJSのPublic Key"

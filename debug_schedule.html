@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>スケジュール調査</title>
+</head>
+<body>
+    <h1>スケジュール調査ツール</h1>
+    <div>
+        <label>日付: <input type="date" id="testDate" value="2025-12-16"></label>
+        <label>時間: <input type="time" id="testTime" value="09:30"></label>
+        <button onclick="testSchedule()">テスト実行</button>
+    </div>
+    <div id="result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://oozrqciajpvfgwvlswln.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9venJxY2lhanB2Zmd3dmxzd2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0NDI3ODksImV4cCI6MjA0OTAxODc4OX0.cHk9yE6lNOM4cH0Nt4F36-7m6dH-94YZ7ADFdPgOF3E';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        async function testSchedule() {
+            const date = document.getElementById('testDate').value;
+            const time = document.getElementById('testTime').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                // データベースから設定を取得
+                const { data, error } = await supabaseClient
+                    .from('schedule_overrides')
+                    .select('*')
+                    .eq('date', date);
+                
+                resultDiv.innerHTML = `
+                    <h3>テスト結果</h3>
+                    <p><strong>日付:</strong> ${date}</p>
+                    <p><strong>時間:</strong> ${time}</p>
+                    <p><strong>データベース結果:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                if (data && data.length > 0) {
+                    for (const schedule of data) {
+                        if (schedule.start_time && schedule.end_time) {
+                            const isInRange = time >= schedule.start_time && time < schedule.end_time;
+                            resultDiv.innerHTML += `
+                                <p><strong>範囲チェック:</strong></p>
+                                <p>設定範囲: ${schedule.start_time} - ${schedule.end_time}</p>
+                                <p>テスト時間: ${time}</p>
+                                <p>時間 >= 開始時間: ${time} >= ${schedule.start_time} = ${time >= schedule.start_time}</p>
+                                <p>時間 < 終了時間: ${time} < ${schedule.end_time} = ${time < schedule.end_time}</p>
+                                <p>範囲内か: ${isInRange}</p>
+                                <p>ステータス: ${schedule.status}</p>
+                                <hr>
+                            `;
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color:red;">エラー: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

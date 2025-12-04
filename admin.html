@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <!-- 設定ファイル -->
+    <script src="config/env.js"></script>
+    <script src="config/config.js"></script>
+    <!-- flatpickr CSS/JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <title>和整骨院 - 管理者ダッシュボード</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            background: #f8f9fa;
+        }
+        
+        /* ログイン画面 */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+        }
+        .login-form {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #1a237e;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #1a237e;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #1a237e;
+            box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.3);
+            border-width: 2px;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 8px rgba(26, 35, 126, 0.3);
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+        .error-msg {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* 管理画面 */
+        .admin-container {
+            display: none;
+            min-height: 100vh;
+        }
+        .header {
+            background: #2c5282;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 24px;
+        }
+        .logout-btn {
+            padding: 8px 15px;
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .main-content {
+            display: flex;
+        }
+        .sidebar {
+            width: 250px;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            min-height: calc(100vh - 60px);
+        }
+        .nav-menu {
+            list-style: none;
+            padding: 20px 0;
+        }
+        .nav-menu li {
+            border-bottom: 1px solid #e9ecef;
+        }
+        .nav-menu a {
+            display: block;
+            padding: 15px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            background: #1a237e;
+            color: white;
+            font-weight: 600;
+            border-left: 4px solid #3f51b5;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 30px;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        
+        /* 予約一覧 */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .admin-table thead {
+            background: #2c5282;
+            color: white;
+        }
+        .admin-table th,
+        .admin-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .admin-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* ボタン */
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .btn-danger {
+            background: #b71c1c;
+            color: white;
+            font-weight: 700;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #1b5e20;
+            color: white;
+            font-weight: 700;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-warning {
+            background: #e65100;
+            color: white;
+            font-weight: 700;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        /* スケジュール管理 */
+        .schedule-controls {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .control-group {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        .control-group h4 {
+            margin-bottom: 15px;
+            color: #1a237e;
+            font-weight: 700;
+            font-size: 20px;
+        }
+        .control-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .control-row input,
+        .control-row select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .modal-buttons {
+            margin-top: 20px;
+        }
+        .modal-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .modal-btn.confirm {
+            background: #dc3545;
+            color: white;
+        }
+        .modal-btn.cancel {
+            background: #6c757d;
+            color: white;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ログイン画面 -->
+    <div id="loginContainer" class="login-container">
+        <form id="loginForm" class="login-form">
+            <h2><i class="fas fa-lock"></i> 管理者ログイン</h2>
+            <div id="loginError" class="error-msg" style="display: none;"></div>
+            <div class="form-group">
+                <label for="adminId"><i class="fas fa-user"></i> 管理者ID</label>
+                <input type="text" id="adminId" required>
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-key"></i> パスワード</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="login-btn">
+                <i class="fas fa-sign-in-alt"></i> ログイン
+            </button>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="#" id="forgotPasswordLink" style="color: #1a237e; text-decoration: none; font-size: 14px;">
+                    <i class="fas fa-question-circle"></i> パスワードを忘れた場合
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- パスワードリセット画面 -->
+    <div id="resetContainer" class="login-container" style="display: none;">
+        <form id="resetForm" class="login-form">
+            <h2><i class="fas fa-key"></i> パスワードリセット</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px; font-size: 14px;">
+                登録済みのメールアドレスを入力してください。<br>
+                パスワードリセット用のリンクをお送りします。
+            </p>
+            <div id="resetError" class="error-msg" style="display: none;"></div>
+            <div id="resetSuccess" style="display: none; color: #28a745; background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #c3e6cb;"></div>
+            <div class="form-group">
+                <label for="resetEmail"><i class="fas fa-envelope"></i> メールアドレス</label>
+                <input type="email" id="resetEmail" required>
+            </div>
+            <button type="submit" class="login-btn">
+                <i class="fas fa-paper-plane"></i> リセットリンクを送信
+            </button>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="#" id="backToLoginLink" style="color: #1a237e; text-decoration: none; font-size: 14px;">
+                    <i class="fas fa-arrow-left"></i> ログイン画面に戻る
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- パスワード更新画面 -->
+    <div id="updatePasswordContainer" class="login-container" style="display: none;">
+        <form id="updatePasswordForm" class="login-form">
+            <h2><i class="fas fa-lock"></i> 新しいパスワード設定</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px; font-size: 14px;">
+                新しいパスワードを設定してください。
+            </p>
+            <div id="updateError" class="error-msg" style="display: none;"></div>
+            <div class="form-group">
+                <label for="newPasswordReset"><i class="fas fa-key"></i> 新しいパスワード</label>
+                <input type="password" id="newPasswordReset" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="confirmPasswordReset"><i class="fas fa-key"></i> パスワード確認</label>
+                <input type="password" id="confirmPasswordReset" required>
+            </div>
+            <button type="submit" class="login-btn">
+                <i class="fas fa-check"></i> パスワードを更新
+            </button>
+        </form>
+    </div>
+
+    <!-- 管理画面 -->
+    <div id="adminContainer" class="admin-container">
+        <header class="header">
+            <h1><i class="fas fa-user-shield"></i> 和整骨院 管理者ダッシュボード</h1>
+            <button id="logoutBtn" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> ログアウト
+            </button>
+        </header>
+        
+        <div class="main-content">
+            <nav class="sidebar">
+                <ul class="nav-menu">
+                    <li><a href="#" class="nav-link active" data-section="reservations">
+                        <i class="fas fa-calendar-check"></i> 予約一覧
+                    </a></li>
+                    <li><a href="#" class="nav-link" data-section="schedule">
+                        <i class="fas fa-clock"></i> スケジュール管理
+                    </a></li>
+                </ul>
+            </nav>
+            
+            <main class="content">
+                <!-- 予約一覧セクション -->
+                <section id="reservationsSection" class="content-section active">
+                    <h2><i class="fas fa-calendar-check"></i> 予約一覧</h2>
+                    <table id="reservationTable" class="admin-table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-user"></i> お名前</th>
+                                <th><i class="fas fa-phone"></i> 電話番号</th>
+                                <th><i class="fas fa-calendar-check"></i> 予約日時</th>
+                                <th><i class="fas fa-list"></i> コース</th>
+                                <th><i class="fas fa-user-plus"></i> 顔客区分</th>
+                                <th><i class="fas fa-route"></i> 経緯</th>
+                                <th><i class="fas fa-cog"></i> 操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
+                
+                <!-- スケジュール管理セクション -->
+                <section id="scheduleSection" class="content-section">
+                    <h2><i class="fas fa-clock"></i> スケジュール管理</h2>
+                    <div class="schedule-controls">
+                        <div class="control-group" style="background: #fafafa; border: 3px solid #d32f2f; border-radius: 10px; padding: 20px; margin-bottom: 30px;">
+                            <h4 style="color: #d32f2f; font-size: 22px; font-weight: bold; margin-bottom: 20px; text-align: center;"><i class="fas fa-ban"></i> 🚫 休業設定</h4>
+                            
+                            <!-- 終日休業設定 -->
+                            <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 3px solid #ef6c00;">
+                                <h4 style="color: #ef6c00; margin-bottom: 15px; font-size: 18px; font-weight: bold;"><i class="fas fa-calendar-times"></i> 🚫 終日休業設定</h4>
+                                <p style="color: #333333; margin-bottom: 15px; font-size: 14px; font-weight: 500;">指定した日付を一日中休業にします。この設定をすると時間指定休業は設定できません。</p>
+                                <div class="control-row">
+                                    <label>休業日付:</label>
+                                    <input type="date" id="closedDate">
+                                    <button class="btn" onclick="setDayClosed()" style="background: #ef6c00; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 6px;">
+                                        <i class="fas fa-times"></i> 🚫 終日休業設定
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- 時間範囲休業設定 -->
+                            <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 3px solid #7b1fa2;">
+                                <h4 style="color: #7b1fa2; margin-bottom: 15px; font-size: 18px; font-weight: bold;"><i class="fas fa-clock"></i> ⏰ 時間範囲休業設定</h4>
+                                <p style="color: #333333; margin-bottom: 15px; font-size: 14px; font-weight: 500;">指定した日付の特定時間範囲を休業にします。<br><strong>例：15:00〜18:00設定→ 15:00, 15:30, 16:00, 16:30, 17:00, 17:30が休業（18:00から営業再開）</strong></p>
+                                <div class="control-row">
+                                    <label>休業日付:</label>
+                                    <input type="date" id="closedTimeDate">
+                                    <select id="closedTimeStart">
+                                        <option value="">開始時間</option>
+                                    </select>
+                                    <span style="margin: 0 10px; font-weight: bold;">〜</span>
+                                    <select id="closedTimeEnd">
+                                        <option value="">終了時間</option>
+                                    </select>
+                                    <button class="btn" onclick="setTimeRangeClosed()" style="background: #7b1fa2; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 6px;">
+                                        <i class="fas fa-times"></i> ⏰ 時間範囲休業
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group" style="background: #f1f8e9; border: 3px solid #388e3c; border-radius: 10px; padding: 20px; margin-bottom: 30px;">
+                            <h4 style="color: #388e3c; font-size: 22px; font-weight: bold; margin-bottom: 20px; text-align: center;"><i class="fas fa-check"></i> ✅ 営業再開</h4>
+                            
+                            <!-- 終日営業設定 -->
+                            <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 3px solid #1976d2;">
+                                <h4 style="color: #1976d2; margin-bottom: 15px; font-size: 18px; font-weight: bold;"><i class="fas fa-calendar-check"></i> ✅ 終日営業設定</h4>
+                                <p style="color: #333333; margin-bottom: 15px; font-size: 14px; font-weight: 500;">日曜・祝日などの休診日を特別に営業日に変更します。</p>
+                                <div class="control-row">
+                                    <label>営業日付:</label>
+                                    <input type="date" id="openDate">
+                                    <button class="btn" onclick="setDayOpen()" style="background: #1976d2; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 6px;">
+                                        <i class="fas fa-check"></i> ✅ 終日営業設定
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- 時間範囲営業設定 -->
+                            <div style="background: #e0f2f1; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 3px solid #00796b;">
+                                <h4 style="color: #00796b; margin-bottom: 15px; font-size: 18px; font-weight: bold;"><i class="fas fa-clock"></i> 🕰️ 時間範囲営業設定</h4>
+                                <p style="color: #333333; margin-bottom: 15px; font-size: 14px; font-weight: 500;">休業設定した時間範囲を解除して営業に戻します。<br><strong>注意：範囲内の各時間帯を個別に削除します</strong></p>
+                                <div class="control-row">
+                                    <label>営業日付:</label>
+                                    <input type="date" id="openTimeDate">
+                                    <select id="openTimeStart">
+                                        <option value="">開始時間</option>
+                                    </select>
+                                    <span style="margin: 0 10px; font-weight: bold;">〜</span>
+                                    <select id="openTimeEnd">
+                                        <option value="">終了時間</option>
+                                    </select>
+                                    <button class="btn" onclick="setTimeRangeOpen()" style="background: #00796b; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 6px;">
+                                        <i class="fas fa-check"></i> 🕰️ 時間範囲営業
+                                    </button>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <h4><i class="fas fa-list"></i> 休業・営業履歴</h4>
+                            <table id="scheduleTable" class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>日付</th>
+                                        <th>開始時間</th>
+                                        <th>終了時間</th>
+                                        <th>状態</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- キャンセル確認モーダル -->
+    <div id="cancelModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> 予約キャンセル確認</h3>
+            <p id="cancelMessage">この予約をキャンセルしますか？</p>
+            <div class="modal-buttons">
+                <button id="confirmCancel" class="modal-btn confirm">
+                    <i class="fas fa-trash"></i> キャンセルする
+                </button>
+                <button id="cancelCancel" class="modal-btn cancel">
+                    <i class="fas fa-times"></i> 戻る
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 設定ファイルの読み込み確認
+        console.log('🔍 設定ファイル確認:', {
+            AppConfigExists: !!window.AppConfig,
+            AppLoggerExists: !!window.AppLogger,
+            windowKeys: Object.keys(window).filter(key => key.startsWith('App'))
+        });
+        
+        if (!window.AppConfig) {
+            console.error('❌ AppConfig が読み込まれていません！');
+            console.log('📁 利用可能なwindowオブジェクト:', Object.keys(window).slice(0, 20));
+            
+            // フォールバック設定を提供
+            console.log('🔄 フォールバック設定を使用します...');
+            window.AppConfig = {
+                getSupabaseConfig: () => ({
+                    url: 'https://oybjnhtyogxiwvsldxhj.supabase.co',
+                    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YmpuaHR5b2d4aXd2c2xkeGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0Nzk3MDQsImV4cCI6MjA4MDA1NTcwNH0.6IwN-RWr3imbRotjb3CG4OYYssP50CBUuIFE-xndjd4'
+                }),
+                getEmailJSConfig: () => ({
+                    publicKey: 'KyHtLCaZ6C6XEpcv0',
+                    serviceId: 'service_ppi835a',
+                    templateId: 'template_jcdlzq6'
+                }),
+                tables: {
+                    reservations: 'reservations',
+                    adminUsers: 'admin_users',
+                    scheduleOverrides: 'schedule_overrides'
+                }
+            };
+            
+            window.AppLogger = {
+                info: (msg, data) => console.log(`[INFO] ${msg}`, data || ''),
+                error: (msg, data) => console.error(`[ERROR] ${msg}`, data || ''),
+                warn: (msg, data) => console.warn(`[WARN] ${msg}`, data || '')
+            };
+            
+            console.log('✅ フォールバック設定完了');
+        }
+        
+        let supabaseConfig, SUPABASE_URL, SUPABASE_KEY, reservationTable, adminTable, scheduleTable;
+        
+        try {
+            supabaseConfig = window.AppConfig.getSupabaseConfig();
+            SUPABASE_URL = supabaseConfig.url;
+            SUPABASE_KEY = supabaseConfig.key;
+            reservationTable = window.AppConfig.tables.reservations;
+            adminTable = window.AppConfig.tables.adminUsers;
+            scheduleTable = window.AppConfig.tables.scheduleOverrides;
+            
+            console.log('✅ 設定確認:', { 
+                url: SUPABASE_URL, 
+                keyPrefix: SUPABASE_KEY ? SUPABASE_KEY.substring(0, 20) + '...' : 'なし',
+                adminTable,
+                configLoaded: true
+            });
+            
+            if (!SUPABASE_URL || !SUPABASE_KEY) {
+                throw new Error('Supabase設定が不完全です');
+            }
+            
+        } catch (error) {
+            console.error('❌ 設定取得エラー:', error);
+            alert('システム設定の取得に失敗しました。管理者に連絡してください。');
+            throw error;
+        }
+
+        // Supabase JSライブラリ読込
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
+        script.onload = () => {
+            try {
+                console.log('📦 Supabase SDK読み込み完了');
+                console.log('🔑 Supabase設定:', { 
+                    url: SUPABASE_URL, 
+                    keyPrefix: SUPABASE_KEY ? SUPABASE_KEY.substring(0, 20) + '...' : '未設定',
+                    sdkExists: typeof supabase !== 'undefined'
+                });
+                
+                if (typeof supabase === 'undefined') {
+                    throw new Error('Supabase SDK が読み込まれていません');
+                }
+                
+                if (!SUPABASE_URL || !SUPABASE_KEY) {
+                    throw new Error('Supabase設定が不完全です');
+                }
+                
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('✅ Supabaseクライアント作成成功');
+                
+                // 接続テスト
+                window.supabase.from('reservations').select('count', { count: 'exact', head: true })
+                    .then(result => {
+                        console.log('🔗 Supabase接続テスト成功:', result);
+                    })
+                    .catch(error => {
+                        console.warn('⚠️ Supabase接続テスト失敗（これは正常な場合もあります）:', error.message);
+                    });
+                
+                if (window.AppLogger) {
+                    window.AppLogger.info('Supabase初期化完了', { url: SUPABASE_URL, keyPrefix: SUPABASE_KEY.substring(0, 20) + '...' });
+                }
+                
+                initApp();
+                
+            } catch (error) {
+                console.error('❌ Supabase初期化エラー:', error);
+                console.log('🔍 エラー詳細:', {
+                    message: error.message,
+                    stack: error.stack,
+                    supabaseExists: typeof supabase !== 'undefined',
+                    urlExists: !!SUPABASE_URL,
+                    keyExists: !!SUPABASE_KEY
+                });
+                alert(`システムの初期化に失敗しました: ${error.message}\nコンソールで詳細を確認してください。`);
+            }
+        };
+        
+        script.onerror = () => {
+            console.error('Supabaseライブラリの読み込みに失敗しました');
+            alert('必要なライブラリの読み込みに失敗しました。インターネット接続を確認してページを再読み込みしてください。');
+        };
+        document.head.appendChild(script);
+
+        function initApp() {
+            // EmailJS初期化
+            const emailJSConfig = window.AppConfig.getEmailJSConfig();
+            try {
+                emailjs.init(emailJSConfig.publicKey);
+                window.emailJSEnabled = true;
+            } catch (error) {
+                window.AppLogger.error('EmailJS初期化エラー:', error);
+                window.emailJSEnabled = false;
+            }
+
+            // ログイン状態チェック
+            if (localStorage.getItem('adminLoggedIn') === 'true') {
+                // 前回のアクティブセクションを復元（パスワードセクションは除外）
+                let lastActiveSection = localStorage.getItem('lastActiveSection') || 'reservations';
+                
+                // 削除されたセクションの場合は予約一覧にフォールバック
+                if (lastActiveSection === 'password') {
+                    lastActiveSection = 'reservations';
+                    localStorage.setItem('lastActiveSection', 'reservations');
+                }
+                
+                showSection(lastActiveSection);
+                showAdminPanel();
+            }
+            
+            setupEventListeners();
+            setupPasswordResetListeners();
+            initializeFormElements();
+        }
+        
+        function setupPasswordResetListeners() {
+            // パスワードリセット関連のイベントリスナー
+            const forgotLink = document.getElementById('forgotPasswordLink');
+            const backLink = document.getElementById('backToLoginLink');
+            const resetForm = document.getElementById('resetForm');
+            const updateForm = document.getElementById('updatePasswordForm');
+            
+            if (forgotLink) {
+                forgotLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showResetForm();
+                });
+            }
+            
+            if (backLink) {
+                backLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showLoginForm();
+                });
+            }
+            
+            if (resetForm) {
+                resetForm.addEventListener('submit', handlePasswordReset);
+            }
+            
+            if (updateForm) {
+                updateForm.addEventListener('submit', handlePasswordUpdate);
+            }
+            
+            // URLパラメータをチェックしてパスワード更新画面を表示
+            const urlParams = new URLSearchParams(window.location.search);
+            const accessToken = urlParams.get('access_token');
+            const type = urlParams.get('type');
+            
+            if (type === 'recovery' && accessToken) {
+                showPasswordUpdateForm();
+            }
+        }
+        
+        function showLoginForm() {
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('resetContainer').style.display = 'none';
+            document.getElementById('updatePasswordContainer').style.display = 'none';
+        }
+        
+        function showResetForm() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('resetContainer').style.display = 'flex';
+            document.getElementById('updatePasswordContainer').style.display = 'none';
+        }
+        
+        function showPasswordUpdateForm() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('resetContainer').style.display = 'none';
+            document.getElementById('updatePasswordContainer').style.display = 'flex';
+        }
+        
+        // パスワードリセットリクエスト処理
+        async function handlePasswordReset(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('resetEmail').value;
+            const errorDiv = document.getElementById('resetError');
+            const successDiv = document.getElementById('resetSuccess');
+            
+            try {
+                const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/admin.html`
+                });
+                
+                if (error) {
+                    errorDiv.textContent = `エラー: ${error.message}`;
+                    errorDiv.style.display = 'block';
+                    successDiv.style.display = 'none';
+                    return;
+                }
+                
+                errorDiv.style.display = 'none';
+                successDiv.innerHTML = `
+                    <i class="fas fa-check-circle"></i> 
+                    パスワードリセット用のメールを送信しました。<br>
+                    メールをご確認の上、記載されたリンクからパスワードを再設定してください。
+                `;
+                successDiv.style.display = 'block';
+                
+            } catch (error) {
+                window.AppLogger.error('パスワードリセットエラー:', error);
+                errorDiv.textContent = 'パスワードリセット処理でエラーが発生しました';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // パスワード更新処理（リセットリンクから）
+        async function handlePasswordUpdate(e) {
+            e.preventDefault();
+            
+            const newPassword = document.getElementById('newPasswordReset').value;
+            const confirmPassword = document.getElementById('confirmPasswordReset').value;
+            const errorDiv = document.getElementById('updateError');
+            
+            if (newPassword !== confirmPassword) {
+                errorDiv.textContent = 'パスワードが一致しません';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                errorDiv.textContent = 'パスワードは6文字以上で入力してください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const { error } = await window.supabase.auth.updateUser({
+                    password: newPassword
+                });
+                
+                if (error) {
+                    errorDiv.textContent = `エラー: ${error.message}`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                alert('パスワードが正常に更新されました。ログイン画面に戻ります。');
+                showLoginForm();
+                
+                // URLパラメータをクリア
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+            } catch (error) {
+                window.AppLogger.error('パスワード更新エラー:', error);
+                errorDiv.textContent = 'パスワード更新処理でエラーが発生しました';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+
+
+        // 初期化処理
+        function initializeFormElements() {
+            // 時間選択肢を生成
+            generateTimeOptions();
+            
+            // 日付変更時の連動処理を設定
+            setupDateChangeHandlers();
+            
+            // 初期状態で時間選択を無効化
+            document.getElementById('closedTimeStart').disabled = true;
+            document.getElementById('closedTimeEnd').disabled = true;
+            document.getElementById('openTimeStart').disabled = true;
+            document.getElementById('openTimeEnd').disabled = true;
+        }
+
+        function setupEventListeners() {
+            // ログインフォーム
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // ログアウト
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            
+            // ナビゲーション
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const section = link.dataset.section;
+                    showSection(section);
+                });
+            });
+            
+
+            
+            // キャンセルモーダル
+            document.getElementById('confirmCancel').addEventListener('click', handleCancelConfirm);
+            document.getElementById('cancelCancel').addEventListener('click', () => {
+                document.getElementById('cancelModal').style.display = 'none';
+            });
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const adminIdInput = document.getElementById('adminId');
+            const passwordInput = document.getElementById('password');
+            
+            if (!adminIdInput || !passwordInput) {
+                console.error('❌ ログインフォーム要素が見つかりません');
+                showLoginError('ログインフォームの読み込みに失敗しました。');
+                return;
+            }
+            
+            const adminId = adminIdInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!adminId || !password) {
+                showLoginError('管理者IDとパスワードを入力してください。');
+                return;
+            }
+            
+            console.log('🔄 ログイン試行:', { 
+                adminId, 
+                tableConfig: adminTable,
+                supabaseExists: !!window.supabase,
+                passwordLength: password.length
+            });
+            
+            if (!window.supabase) {
+                console.error('❌ Supabaseが初期化されていません');
+                showLoginError('システムが正しく初期化されていません。ページを再読み込みしてください。');
+                return;
+            }
+            
+            try {
+                console.log('🔍 データベース認証開始...');
+                console.log('🔍 クエリ詳細:', { 
+                    table: adminTable,
+                    searchId: adminId,
+                    passwordLength: password.length
+                });
+                
+                // まず管理者IDだけで検索してユーザーが存在するか確認
+                const { data: userExists, error: userError } = await window.supabase
+                    .from(adminTable)
+                    .select('id, password_hash')
+                    .eq('id', adminId);
+                
+                console.log('👤 ユーザー存在確認:', { 
+                    userExists: userExists?.length > 0,
+                    userCount: userExists?.length,
+                    userError: userError?.message,
+                    foundIds: userExists?.map(u => u.id)
+                });
+                
+                if (userError) {
+                    console.error('❌ ユーザー検索エラー:', userError);
+                    showLoginError(`データベース接続エラー: ${userError.message}`);
+                    return;
+                }
+                
+                if (!userExists || userExists.length === 0) {
+                    console.log('❌ 管理者IDが見つかりません:', adminId);
+                    showLoginError('管理者IDが見つかりません。');
+                    return;
+                }
+                
+                // パスワードも含めた完全認証
+                const { data, error } = await window.supabase
+                    .from(adminTable)
+                    .select('*')
+                    .eq('id', adminId)
+                    .eq('password_hash', password)
+                    .single();
+                
+                console.log('🔐 パスワード認証結果:', { 
+                    dataExists: !!data, 
+                    errorExists: !!error,
+                    errorMessage: error?.message,
+                    errorCode: error?.code,
+                    dataId: data?.id,
+                    storedPassword: userExists[0]?.password_hash,
+                    inputPassword: password,
+                    passwordMatch: userExists[0]?.password_hash === password
+                });
+                
+                if (error) {
+                    console.error('❌ データベースエラー:', error);
+                    if (error.code === 'PGRST116') {
+                        showLoginError('管理者IDまたはパスワードが正しくありません。');
+                    } else {
+                        showLoginError(`データベースエラー: ${error.message}`);
+                    }
+                    return;
+                }
+                
+                if (!data) {
+                    console.log('❌ ユーザーが見つかりません');
+                    showLoginError('管理者IDまたはパスワードが正しくありません。');
+                    return;
+                }
+                
+                console.log('✅ ログイン成功:', data.id);
+                localStorage.setItem('adminLoggedIn', 'true');
+                localStorage.setItem('adminId', adminId);
+                showAdminPanel();
+                
+            } catch (error) {
+                console.error('❌ 認証処理エラー:', error);
+                showLoginError(`認証処理でエラーが発生しました: ${error.message}`);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('adminLoggedIn');
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('adminContainer').style.display = 'none';
+            document.getElementById('loginForm').reset();
+        }
+
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function showAdminPanel() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('adminContainer').style.display = 'block';
+            
+            // 現在のアクティブセクションを確認して適切なデータを読み込み
+            const activeSection = document.querySelector('.nav-link.active');
+            const sectionName = activeSection ? activeSection.dataset.section : 'reservations';
+            
+            if (sectionName === 'reservations') {
+                loadReservations();
+            } else if (sectionName === 'schedule') {
+                loadScheduleOverrides();
+            }
+        }
+
+        function showSection(sectionName) {
+            console.log('🔄 セクション切り替え:', sectionName);
+            
+            // 有効なセクション名かチェック
+            const validSections = ['reservations', 'schedule'];
+            if (!validSections.includes(sectionName)) {
+                console.warn('⚠️ 無効なセクション名:', sectionName, '-> reservationsに変更');
+                sectionName = 'reservations';
+            }
+            
+            try {
+                // ナビゲーションの状態更新
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                const navLink = document.querySelector(`[data-section="${sectionName}"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                } else {
+                    console.warn('⚠️ ナビゲーションリンクが見つかりません:', sectionName);
+                }
+                
+                // セクションの表示切り替え
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                const targetSection = document.getElementById(`${sectionName}Section`);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    console.log('✅ セクション表示成功:', sectionName);
+                } else {
+                    console.error('❌ セクション要素が見つかりません:', `${sectionName}Section`);
+                    // フォールバック: 予約一覧を表示
+                    const reservationsSection = document.getElementById('reservationsSection');
+                    if (reservationsSection) {
+                        reservationsSection.classList.add('active');
+                        sectionName = 'reservations';
+                    }
+                }
+                
+                // 現在のセクションをローカルストレージに保存
+                localStorage.setItem('lastActiveSection', sectionName);
+                
+                // セクション別の初期化処理
+                if (sectionName === 'reservations') {
+                    loadReservations();
+                } else if (sectionName === 'schedule') {
+                    loadScheduleOverrides();
+                }
+                
+            } catch (error) {
+                console.error('❌ セクション切り替えエラー:', error);
+                // エラー時は予約一覧を強制表示
+                try {
+                    const reservationsSection = document.getElementById('reservationsSection');
+                    if (reservationsSection) {
+                        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                        reservationsSection.classList.add('active');
+                        localStorage.setItem('lastActiveSection', 'reservations');
+                    }
+                } catch (fallbackError) {
+                    console.error('❌ フォールバック処理も失敗:', fallbackError);
+                }
+            }
+        }
+
+        // 日付を曜日付きでフォーマットする関数
+        function formatDateWithDay(datetimeStr) {
+            const dt = new Date(datetimeStr);
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayName = dayNames[dt.getDay()];
+            
+            const year = dt.getFullYear();
+            const month = String(dt.getMonth() + 1).padStart(2, '0');
+            const date = String(dt.getDate()).padStart(2, '0');
+            const hour = String(dt.getHours()).padStart(2, '0');
+            const minute = String(dt.getMinutes()).padStart(2, '0');
+            
+            return `${year}-${month}-${date} (${dayName}) ${hour}:${minute}`;
+        }
+
+        // 予約一覧の読み込み
+        async function loadReservations() {
+            const tbody = document.querySelector('#reservationTable tbody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
+            
+            try {
+                const { data, error } = await window.supabase
+                    .from(reservationTable)
+                    .select('*')
+                    .order('datetime', { ascending: true });
+                
+                tbody.innerHTML = '';
+                
+                if (error) throw error;
+                
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">予約はありません</td></tr>';
+                    return;
+                }
+                
+                data.forEach(reservation => {
+                    const tr = document.createElement('tr');
+                    
+                    // 新規顧客の表示処理
+                    const customerTypeDisplay = reservation.is_new_customer === true ? 
+                        '<span style="background:#28a745;color:white;padding:2px 6px;border-radius:3px;font-size:12px;"><i class="fas fa-star"></i> 新規</span>' : 
+                        '<span style="background:#6c757d;color:white;padding:2px 6px;border-radius:3px;font-size:12px;">リピーター</span>';
+                    
+                    // リファラーの表示処理
+                    const referralDisplay = {
+                        'instagram': '<i class="fab fa-instagram" style="color:#E4405F;"></i> Instagram',
+                        'line': '<i class="fab fa-line" style="color:#00C300;"></i> LINE',
+                        'google_search': '<i class="fab fa-google" style="color:#4285F4;"></i> グーグル',
+                        'yahoo_search': '<i class="fas fa-search" style="color:#FF0033;"></i> ヤフー',
+                        'referral': '<i class="fas fa-users" style="color:#17a2b8;"></i> 紹介',
+                        'flyer': '<i class="fas fa-newspaper" style="color:#ffc107;"></i> チラシ',
+                        'other': '<i class="fas fa-question" style="color:#6c757d;"></i> その他'
+                    }[reservation.referral_source] || '未設定';
+                    
+                    tr.innerHTML = `
+                        <td>${reservation.name}</td>
+                        <td>${reservation.phone}</td>
+                        <td>${formatDateWithDay(reservation.datetime)}</td>
+                        <td>${reservation.course}</td>
+                        <td>${customerTypeDisplay}</td>
+                        <td>${referralDisplay}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="showCancelModal(${reservation.id}, '${reservation.name}', '${reservation.datetime}', '${reservation.phone}')">
+                                <i class="fas fa-trash"></i> キャンセル
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('予約一覧取得エラー:', error);
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#dc3545;">取得エラー</td></tr>';
+            }
+        }
+
+        // 時間選択肢の生成
+        function generateTimeOptions() {
+            const timeSelects = ['closedTimeStart', 'closedTimeEnd', 'openTimeStart', 'openTimeEnd'];
+            timeSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                
+                // 初期状態では日付が選択されていないため無効化
+                if (selectId.includes('closed')) {
+                    const dateInput = document.getElementById('closedTimeDate');
+                    if (!dateInput.value) {
+                        select.innerHTML = selectId.includes('Start') ? '<option value="">開始時間</option>' : '<option value="">終了時間</option>';
+                        select.disabled = true;
+                        return;
+                    }
+                } else if (selectId.includes('open')) {
+                    const dateInput = document.getElementById('openTimeDate');
+                    if (!dateInput.value) {
+                        select.innerHTML = selectId.includes('Start') ? '<option value="">開始時間</option>' : '<option value="">終了時間</option>';
+                        select.disabled = true;
+                        return;
+                    }
+                }
+                
+                select.innerHTML = selectId.includes('Start') ? '<option value="">開始時間</option>' : '<option value="">終了時間</option>';
+                
+                // 平日・土曜の営業時間を基準に選択肢生成（9:00〜18:30）
+                for (let h = 9; h <= 18; h++) {
+                    ['00', '30'].forEach(min => {
+                        // 18:30まで含むように条件を修正
+                        if (h < 18 || (h === 18 && min === '30') || (h === 18 && min === '00')) {
+                            const time = `${h.toString().padStart(2, '0')}:${min}`;
+                            select.innerHTML += `<option value="${time}">${time}</option>`;
+                        }
+                    });
+                }
+                
+                select.disabled = false;
+            });
+        }
+        
+        // 日付変更時の連動処理設定
+        function setupDateChangeHandlers() {
+            // 休業設定の日付変更時
+            document.getElementById('closedDate').addEventListener('change', async function() {
+                const date = this.value;
+                if (!date) return;
+                
+                // 終日休業設定があるかチェック
+                const isDayClosed = await checkDayClosedStatus(date);
+                const timeInput = document.getElementById('closedTimeDate');
+                const timeSelect = document.getElementById('closedTime');
+                
+                const timeStartSelect = document.getElementById('closedTimeStart');
+                const timeEndSelect = document.getElementById('closedTimeEnd');
+                
+                if (isDayClosed) {
+                    timeInput.disabled = true;
+                    timeStartSelect.disabled = true;
+                    timeEndSelect.disabled = true;
+                    timeStartSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                    timeEndSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                } else {
+                    timeInput.disabled = false;
+                    timeStartSelect.disabled = false;
+                    timeEndSelect.disabled = false;
+                    generateTimeOptions();
+                }
+            });
+            
+            // 時間指定休業の日付変更時
+            document.getElementById('closedTimeDate').addEventListener('change', async function() {
+                const date = this.value;
+                const timeStartSelect = document.getElementById('closedTimeStart');
+                const timeEndSelect = document.getElementById('closedTimeEnd');
+                
+                if (!date) {
+                    timeStartSelect.innerHTML = '<option value="">日付を選択してください</option>';
+                    timeEndSelect.innerHTML = '<option value="">日付を選択してください</option>';
+                    timeStartSelect.disabled = true;
+                    timeEndSelect.disabled = true;
+                    return;
+                }
+                
+                // 終日休業設定があるかチェック
+                const isDayClosed = await checkDayClosedStatus(date);
+                
+                if (isDayClosed) {
+                    timeStartSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                    timeEndSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                    timeStartSelect.disabled = true;
+                    timeEndSelect.disabled = true;
+                } else {
+                    timeStartSelect.disabled = false;
+                    timeEndSelect.disabled = false;
+                    generateTimeOptions();
+                }
+            });
+            
+            // 営業再開の日付変更時も同様に処理
+            document.getElementById('openTimeDate').addEventListener('change', async function() {
+                const date = this.value;
+                const timeStartSelect = document.getElementById('openTimeStart');
+                const timeEndSelect = document.getElementById('openTimeEnd');
+                
+                if (!date) {
+                    timeStartSelect.innerHTML = '<option value="">日付を選択してください</option>';
+                    timeEndSelect.innerHTML = '<option value="">日付を選択してください</option>';
+                    timeStartSelect.disabled = true;
+                    timeEndSelect.disabled = true;
+                    return;
+                }
+                
+                timeStartSelect.disabled = false;
+                timeEndSelect.disabled = false;
+                generateTimeOptions();
+            });
+        }
+        
+        // 終日休業設定状態を確認
+        async function checkDayClosedStatus(date) {
+            try {
+                const { data, error } = await window.supabase
+                    .from(scheduleTable)
+                    .select('*')
+                    .eq('date', date)
+                    .eq('status', 'closed')
+                    .is('time', null);
+                
+                if (error) {
+                    console.error('休業状態確認エラー:', error);
+                    return false;
+                }
+                
+                return data && data.length > 0;
+            } catch (error) {
+                console.error('休業状態確認エラー:', error);
+                return false;
+            }
+        }
+
+        // スケジュール管理機能
+        async function setDayClosed() {
+            const date = document.getElementById('closedDate').value;
+            if (!date) {
+                alert('日付を選択してください');
+                return;
+            }
+            
+            try {
+                await window.supabase.from(scheduleTable).insert({
+                    date: date,
+                    time: null,
+                    status: 'closed',
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('休業日を設定しました');
+                loadScheduleOverrides();
+                
+                // スケジュール履歴テーブルにスクロール
+                setTimeout(() => {
+                    document.getElementById('scheduleTable').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 300);
+                
+                // 時間指定休業のコントロールを無効化
+                const timeDate = document.getElementById('closedTimeDate');
+                const timeStartSelect = document.getElementById('closedTimeStart');
+                const timeEndSelect = document.getElementById('closedTimeEnd');
+                if (timeDate.value === date) {
+                    timeDate.disabled = true;
+                    timeStartSelect.disabled = true;
+                    timeEndSelect.disabled = true;
+                    timeStartSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                    timeEndSelect.innerHTML = '<option value="">終日休業設定済み</option>';
+                }
+            } catch (error) {
+                console.error('休業設定エラー:', error);
+                alert('設定に失敗しました');
+            }
+        }
+
+        async function setTimeRangeClosed() {
+            const date = document.getElementById('closedTimeDate').value;
+            const startTime = document.getElementById('closedTimeStart').value;
+            const endTime = document.getElementById('closedTimeEnd').value;
+            
+            if (!date || !startTime || !endTime) {
+                alert('日付、開始時間、終了時間をすべて選択してください');
+                return;
+            }
+            
+            // 時間の範囲チェック
+            if (startTime >= endTime) {
+                alert('開始時間は終了時間より早く設定してください');
+                return;
+            }
+            
+            try {
+                // 指定範囲の各時間帯を休業設定
+                const times = generateTimeRange(startTime, endTime);
+                
+                for (const time of times) {
+                    await window.supabase.from(scheduleTable).insert({
+                        date: date,
+                        time: time,
+                        start_time: startTime,
+                        end_time: endTime,
+                        status: 'closed',
+                        created_at: new Date().toISOString()
+                    });
+                }
+                
+                alert(`休業時間を設定しました（${startTime}〜${endTime}）`);
+                loadScheduleOverrides();
+                
+                // スケジュール履歴テーブルにスクロール
+                setTimeout(() => {
+                    document.getElementById('scheduleTable').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 300);
+            } catch (error) {
+                console.error('休業設定エラー:', error);
+                alert('設定に失敗しました');
+            }
+        }
+
+        async function setDayOpen() {
+            const date = document.getElementById('openDate').value;
+            if (!date) {
+                alert('日付を選択してください');
+                return;
+            }
+            
+            try {
+                await window.supabase.from(scheduleTable).insert({
+                    date: date,
+                    time: null,
+                    status: 'open',
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('営業日を設定しました');
+                loadScheduleOverrides();
+                
+                // スケジュール履歴テーブルにスクロール
+                setTimeout(() => {
+                    document.getElementById('scheduleTable').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 300);
+                
+                // 時間指定休業のコントロールを有効化
+                const timeDate = document.getElementById('closedTimeDate');
+                const timeStartSelect = document.getElementById('closedTimeStart');
+                const timeEndSelect = document.getElementById('closedTimeEnd');
+                if (timeDate.value === date) {
+                    timeDate.disabled = false;
+                    timeStartSelect.disabled = false;
+                    timeEndSelect.disabled = false;
+                    generateTimeOptions();
+                }
+            } catch (error) {
+                console.error('営業設定エラー:', error);
+                alert('設定に失敗しました');
+            }
+        }
+
+        async function setTimeRangeOpen() {
+            const date = document.getElementById('openTimeDate').value;
+            const startTime = document.getElementById('openTimeStart').value;
+            const endTime = document.getElementById('openTimeEnd').value;
+            
+            if (!date || !startTime || !endTime) {
+                alert('日付、開始時間、終了時間をすべて選択してください');
+                return;
+            }
+            
+            // 時間の範囲チェック
+            if (startTime >= endTime) {
+                alert('開始時間は終了時間より早く設定してください');
+                return;
+            }
+            
+            try {
+                // 指定範囲の各時間帯の既存休業設定を削除
+                const times = generateTimeRange(startTime, endTime);
+                
+                // まず既存の休業設定を削除
+                for (const time of times) {
+                    await window.supabase.from(scheduleTable)
+                        .delete()
+                        .eq('date', date)
+                        .eq('time', time)
+                        .eq('status', 'closed');
+                }
+                
+                // 新しい営業設定を追加（必要に応じて）
+                for (const time of times) {
+                    await window.supabase.from(scheduleTable).insert({
+                        date: date,
+                        time: time,
+                        start_time: startTime,
+                        end_time: endTime,
+                        status: 'open',
+                        created_at: new Date().toISOString()
+                    });
+                }
+                
+                alert(`営業時間を設定しました（${startTime}〜${endTime}）`);
+                loadScheduleOverrides();
+                
+                // スケジュール履歴テーブルにスクロール
+                setTimeout(() => {
+                    document.getElementById('scheduleTable').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 300);
+            } catch (error) {
+                console.error('営業設定エラー:', error);
+                alert('設定に失敗しました');
+            }
+        }
+        
+        // 時間範囲から30分単位の時間配列を生成
+        function generateTimeRange(startTime, endTime) {
+            const times = [];
+            const [startHour, startMin] = startTime.split(':').map(Number);
+            const [endHour, endMin] = endTime.split(':').map(Number);
+            
+            let currentHour = startHour;
+            let currentMin = startMin;
+            
+            // 終了時間は含まない（例：15:00〜18:00なら、18:00は営業再開時間なので休業対象外）
+            while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+                const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+                times.push(timeStr);
+                
+                currentMin += 30;
+                if (currentMin >= 60) {
+                    currentMin = 0;
+                    currentHour++;
+                }
+            }
+            
+            console.log(`時間範囲 ${startTime}〜${endTime} → 生成された時間:`, times);
+            return times;
+        }
+
+        // スケジュール履歴の読み込み
+        async function loadScheduleOverrides() {
+            const tbody = document.querySelector('#scheduleTable tbody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
+            
+            try {
+                const { data, error } = await window.supabase
+                    .from(scheduleTable)
+                    .select('*')
+                    .order('date', { ascending: false });
+                
+                tbody.innerHTML = '';
+                
+                if (error) throw error;
+                
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">設定はありません</td></tr>';
+                    return;
+                }
+                
+                // 時間範囲でグループ化して表示
+                const groupedSchedules = {};
+                data.forEach(schedule => {
+                    const key = `${schedule.date}_${schedule.status}_${schedule.start_time || 'day'}_${schedule.end_time || 'day'}`;
+                    if (!groupedSchedules[key]) {
+                        groupedSchedules[key] = {
+                            ...schedule,
+                            ids: [schedule.id]
+                        };
+                    } else {
+                        groupedSchedules[key].ids.push(schedule.id);
+                    }
+                });
+                
+                Object.values(groupedSchedules).forEach(schedule => {
+                    const tr = document.createElement('tr');
+                    const startTime = schedule.start_time || (schedule.time ? schedule.time : '終日');
+                    const endTime = schedule.end_time || (schedule.time ? schedule.time : '終日');
+                    const timeDisplay = schedule.start_time && schedule.end_time ? 
+                        `${schedule.start_time}〜${schedule.end_time}` : 
+                        (schedule.time || '終日');
+                    
+                    // 日付に曜日を追加
+                    const dateWithDay = (() => {
+                        const dt = new Date(schedule.date + 'T00:00:00');
+                        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                        const dayName = dayNames[dt.getDay()];
+                        return `${schedule.date} (${dayName})`;
+                    })();
+                    
+                    tr.innerHTML = `
+                        <td>${dateWithDay}</td>
+                        <td>${schedule.start_time || (schedule.time || '終日')}</td>
+                        <td>${schedule.end_time || (schedule.time || '終日')}</td>
+                        <td>
+                            <span class="badge" style="font-weight: bold; padding: 10px 16px; color: white; background: ${schedule.status === 'closed' ? '#b71c1c' : '#1b5e20'}; border-radius: 6px;">
+                                ${schedule.status === 'closed' ? '🚫 休業' : '✅ 営業'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteScheduleGroup([${schedule.ids.join(',')}])">
+                                <i class="fas fa-trash"></i> 削除
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('スケジュール履歴取得エラー:', error);
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#dc3545;">取得エラー</td></tr>';
+            }
+        }
+
+        async function deleteScheduleOverride(id) {
+            if (!confirm('この設定を削除しますか？')) return;
+            
+            try {
+                // 削除前にスケジュール情報を取得
+                const { data: scheduleData } = await window.supabase
+                    .from(scheduleTable)
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+                
+                await window.supabase.from(scheduleTable).delete().eq('id', id);
+                
+                // 削除したスケジュールの詳細メッセージ
+                if (scheduleData) {
+                    const dateWithDay = (() => {
+                        const dt = new Date(scheduleData.date + 'T00:00:00');
+                        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                        const dayName = dayNames[dt.getDay()];
+                        return `${scheduleData.date} (${dayName})`;
+                    })();
+                    
+                    const timeInfo = scheduleData.start_time && scheduleData.end_time ? 
+                        `${scheduleData.start_time}〜${scheduleData.end_time}` : 
+                        (scheduleData.time || '終日');
+                    
+                    const statusText = scheduleData.status === 'closed' ? '休業' : '営業';
+                    alert(`${dateWithDay} ${timeInfo}の${statusText}設定を削除しました`);
+                } else {
+                    alert('設定を削除しました');
+                }
+                loadScheduleOverrides();
+                
+                // コントロールの状態を更新
+                const closedDate = document.getElementById('closedDate').value;
+                const closedTimeDate = document.getElementById('closedTimeDate').value;
+                if (closedDate || closedTimeDate) {
+                    // 日付変更イベントを発生させて連動処理を実行
+                    if (closedDate) {
+                        document.getElementById('closedDate').dispatchEvent(new Event('change'));
+                    }
+                    if (closedTimeDate) {
+                        document.getElementById('closedTimeDate').dispatchEvent(new Event('change'));
+                    }
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
+            }
+        }
+        
+        async function deleteScheduleGroup(ids) {
+            if (!confirm('この時間範囲の設定をすべて削除しますか？')) return;
+            
+            try {
+                // 削除前に最初のスケジュール情報を取得（代表として）
+                const { data: scheduleData } = await window.supabase
+                    .from(scheduleTable)
+                    .select('*')
+                    .eq('id', ids[0])
+                    .single();
+                
+                for (const id of ids) {
+                    await window.supabase.from(scheduleTable).delete().eq('id', id);
+                }
+                
+                // 削除したスケジュールの詳細メッセージ
+                if (scheduleData) {
+                    const dateWithDay = (() => {
+                        const dt = new Date(scheduleData.date + 'T00:00:00');
+                        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                        const dayName = dayNames[dt.getDay()];
+                        return `${scheduleData.date} (${dayName})`;
+                    })();
+                    
+                    const timeInfo = scheduleData.start_time && scheduleData.end_time ? 
+                        `${scheduleData.start_time}〜${scheduleData.end_time}` : 
+                        (scheduleData.time || '終日');
+                    
+                    const statusText = scheduleData.status === 'closed' ? '休業' : '営業';
+                    alert(`${dateWithDay} ${timeInfo}の${statusText}設定を削除しました`);
+                } else {
+                    alert('設定を削除しました');
+                }
+                loadScheduleOverrides();
+                
+                // コントロールの状態を更新
+                const closedDate = document.getElementById('closedDate').value;
+                const closedTimeDate = document.getElementById('closedTimeDate').value;
+                if (closedDate || closedTimeDate) {
+                    if (closedDate) {
+                        document.getElementById('closedDate').dispatchEvent(new Event('change'));
+                    }
+                    if (closedTimeDate) {
+                        document.getElementById('closedTimeDate').dispatchEvent(new Event('change'));
+                    }
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
+            }
+        }
+
+        // キャンセル機能
+        let currentCancelId = null;
+        let currentCancelData = null;
+
+        window.showCancelModal = function(id, name, datetime, phone) {
+            currentCancelId = id;
+            currentCancelData = { name, datetime, phone };
+            const modal = document.getElementById('cancelModal');
+            const message = document.getElementById('cancelMessage');
+            message.innerHTML = `
+                <strong>${name}様</strong>の予約をキャンセルしますか？<br>
+                <small style="color:#666;">日時: ${datetime.replace('T', ' ').slice(0,16)}</small>
+            `;
+            modal.style.display = 'block';
+        };
+
+        async function handleCancelConfirm() {
+            if (!currentCancelId) return;
+            
+            const btn = document.getElementById('confirmCancel');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+            
+            try {
+                // Supabaseから予約削除
+                const { error } = await window.supabase
+                    .from(reservationTable)
+                    .delete()
+                    .eq('id', currentCancelId);
+                
+                if (error) throw error;
+                
+                // キャンセルメール送信
+                if (window.emailJSEnabled) {
+                    try {
+                        await emailjs.send('service_ppi835a', 'template_jcdlzq6', {
+                            name: currentCancelData.name,
+                            phone: currentCancelData.phone,
+                            datetime: currentCancelData.datetime,
+                            course: 'キャンセル',
+                            to_email: 'yoshitaka.t.free888@gmail.com',
+                            user_email: '',
+                            message: `予約がキャンセルされました。\n\n【キャンセル内容】\n氏名: ${currentCancelData.name}\n電話: ${currentCancelData.phone}\n日時: ${currentCancelData.datetime.replace('T', ' ')}`
+                        });
+                    } catch (emailError) {
+                        console.error('メール送信エラー:', emailError);
+                    }
+                }
+                
+                // モーダル閉じる
+                document.getElementById('cancelModal').style.display = 'none';
+                
+                // 予約一覧更新
+                loadReservations();
+                
+                // 日時を読みやすい形式にフォーマット
+                const formattedDateTime = formatDateWithDay(currentCancelData.datetime);
+                alert(`${currentCancelData.name}様の${formattedDateTime}の予約を削除しました`);
+                
+            } catch (error) {
+                console.error('キャンセル処理エラー:', error);
+                alert('キャンセル処理に失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash"></i> キャンセルする';
+                currentCancelId = null;
+                currentCancelData = null;
+            }
+        }
+
+
+    </script>
+</body>
+</html>

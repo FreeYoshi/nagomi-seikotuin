@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <!-- 設定ファイル -->
+    <script src="config/env.js"></script>
+    <script src="config/config.js"></script>
+    <!-- flatpickr CSS/JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <title>和整骨院 - 完全予約制の整骨院</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            background: #fff;
+        }
+        
+        /* ヘッダー */
+        .header {
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 70px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        .nav {
+            display: flex;
+            list-style: none;
+        }
+        .nav li {
+            margin-left: 30px;
+        }
+        .nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .nav a:hover {
+            color: #4caf50;
+        }
+        
+        /* ヒーローセクション */
+        .hero {
+            background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+            color: white;
+            padding: 120px 20px 80px;
+            text-align: center;
+            margin-top: 70px;
+        }
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .hero .phone {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 15px 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50px;
+            display: inline-block;
+        }
+        
+        /* セクション共通 */
+        .section {
+            padding: 60px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section h2 {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 50px;
+            color: #388e3c;
+            position: relative;
+        }
+        .section h2::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: #81c784;
+            margin: 15px auto;
+        }
+        
+        /* 当院紹介 */
+        .intro-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+        .intro-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        .intro-card .icon {
+            font-size: 48px;
+            color: #66bb6a;
+            margin-bottom: 20px;
+        }
+        .intro-card h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #388e3c;
+        }
+        
+        /* アクセス情報 */
+        .access-info {
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 10px;
+            margin: 40px 0;
+        }
+        .access-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .access-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .access-item .icon {
+            font-size: 24px;
+            color: #66bb6a;
+            margin-right: 15px;
+        }
+        
+        /* 想い */
+        .philosophy {
+            background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            margin: 60px 0;
+        }
+        .philosophy h2 {
+            color: white;
+        }
+        .philosophy h2::after {
+            background: white;
+        }
+        .philosophy p {
+            font-size: 18px;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+        
+        /* メディア情報 */
+        .media-section {
+            background: white;
+            padding: 80px 20px;
+        }
+        .media-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .media-image {
+            flex: 1;
+        }
+        .media-img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .media-text {
+            flex: 1;
+        }
+        .media-text h3 {
+            color: #66bb6a;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        .media-text p {
+            line-height: 1.8;
+            color: #666;
+        }
+        
+        /* ロゴコンテナ */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .main-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* 想いセクション更新 */
+        .philosophy-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        .philosophy-image {
+            flex: 1;
+        }
+        .philosophy-img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .philosophy-text {
+            flex: 1;
+        }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .philosophy-content,
+            .media-content {
+                flex-direction: column;
+            }
+            .logo-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .main-logo {
+                width: 60px;
+                height: 60px;
+            }
+            .access-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 予約フォーム */
+        .reservation {
+            background: #f8f9fa;
+            padding: 60px 20px;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #388e3c;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #81c784;
+        }
+        .business-hours {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4caf50;
+        }
+        .business-hours h4 {
+            color: #2e7d32;
+            margin-bottom: 8px;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success {
+            color: #28a745;
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .modal-buttons {
+            margin-top: 20px;
+        }
+        .modal-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .modal-btn.confirm {
+            background: #dc3545;
+            color: white;
+        }
+        .modal-btn.cancel {
+            background: #6c757d;
+            color: white;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                height: auto;
+                padding: 15px 20px;
+            }
+            .nav {
+                margin-top: 15px;
+            }
+            .nav li {
+                margin-left: 20px;
+            }
+            .hero {
+                margin-top: 120px;
+                padding: 80px 20px 60px;
+            }
+            .hero h1 {
+                font-size: 32px;
+            }
+            .hero p {
+                font-size: 18px;
+            }
+            .hero .phone {
+                font-size: 24px;
+            }
+            .section h2 {
+                font-size: 28px;
+            }
+            .form-container {
+                padding: 30px 20px;
+            }
+        }
+        
+        /* flatpickr カスタムスタイル */
+        .flatpickr-calendar {
+            font-size: 16px;
+        }
+        .flatpickr-day {
+            color: #333 !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+        }
+        .flatpickr-day:hover {
+            background: #e3f2fd !important;
+            color: #1976d2 !important;
+        }
+        .flatpickr-day.selected {
+            background: #4caf50 !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+        .flatpickr-day.today {
+            background: #81c784 !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+        .flatpickr-day.disabled,
+        .flatpickr-day.flatpickr-disabled {
+            color: #666 !important;
+        }
+        .flatpickr-weekday {
+            color: #555 !important;
+            font-weight: 700 !important;
+        }
+        
+        /* スムーススクロール */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">和整骨院</div>
+            <nav>
+                <ul class="nav">
+                    <li><a href="#intro">当院紹介</a></li>
+                    <li><a href="#access">アクセス・営業時間</a></li>
+                    <li><a href="#philosophy">当院の想い</a></li>
+                    <li><a href="#reservation">問い合わせ・予約</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ヒーローセクション -->
+    <section class="hero">
+        <div class="logo-container">
+            <img src="images/logo.jpg" alt="和整骨院" class="main-logo">
+            <h1>和整骨院</h1>
+        </div>
+        <p>国家資格所有者による確かな技術で<br>「痛み・不調のない日々」を取り戻すお手伝いをしています</p>
+        <div class="phone">
+            <i class="fas fa-phone"></i> <span id="contact-phone">0985-73-9884</span>
+        </div>
+        <p>完全予約制・時間外相談可</p>
+    </section>
+
+    <!-- 当院紹介 -->
+    <section id="intro" class="section">
+        <h2>当院紹介</h2>
+        <div class="intro-grid">
+            <div class="intro-card">
+                <div class="icon"><i class="fas fa-user-md"></i></div>
+                <h3>国家資格所有者</h3>
+                <p>柔道整復師の国家資格を持つ専門家が、確かな技術で施術にあたります。安心してお任せください。</p>
+            </div>
+            <div class="intro-card">
+                <div class="icon"><i class="fas fa-clock"></i></div>
+                <h3>完全予約制</h3>
+                <p>お待たせすることなく、しっかりと時間をかけて施術を行います。ご予約はお電話またはWebから。</p>
+            </div>
+            <div class="intro-card">
+                <div class="icon"><i class="fas fa-heart"></i></div>
+                <h3>根本改善</h3>
+                <p>痛みの原因を根本から改善し、再発を防ぐための施術とアドバイスを行います。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- メディア情報 -->
+    <section id="media" class="section media-section">
+        <h2>メディア情報</h2>
+        <div class="media-content">
+            <div class="media-image">
+                <img src="images/media.png" alt="メディア掲載" class="media-img">
+            </div>
+            <div class="media-text">
+                <h3>各種メディアに掲載いただいております</h3>
+                <p>
+                    当院の取り組みや治療法について、各種メディアでご紹介いただいております。<br>
+                    実績と信頼の証として、安心してお越しください。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- アクセス・営業時間 -->
+    <section id="access" class="section">
+        <h2>アクセス・営業時間</h2>
+        <div class="access-info">
+            <div class="access-grid">
+                <div class="access-item">
+                    <div class="icon"><i class="fas fa-phone"></i></div>
+                    <div>
+                        <strong>お電話</strong><br>
+                        <span id="access-phone">0985-73-9884</span>
+                    </div>
+                </div>
+                <div class="access-item">
+                    <div class="icon"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <strong>営業時間</strong><br>
+                        平日：9:00〜19:00<br>
+                        土曜：9:00〜12:00<br>
+                        休診：日曜・祝日
+                    </div>
+                </div>
+                <div class="access-item">
+                    <div class="icon">
+                        <a href="https://www.instagram.com/nagomi0510seikotuin/" target="_blank" style="color: #E4405F; text-decoration: none;">
+                            <i class="fab fa-instagram" style="font-size: 24px;"></i>
+                        </a>
+                    </div>
+                    <div>
+                        <strong>Instagram</strong><br>
+                        <a href="https://www.instagram.com/nagomi0510seikotuin/" target="_blank" style="color: #E4405F; text-decoration: none; font-size: 12px;">
+                            @nagomi0510seikotuin
+                        </a>
+                    </div>
+                </div>
+                <div class="access-item">
+                    <div class="icon">
+                        <a href="https://line.me/R/ti/p/@osy8134l?oat_content=qr#~" target="_blank" style="color: #00C300; text-decoration: none;">
+                            <i class="fab fa-line" style="font-size: 24px;"></i>
+                        </a>
+                    </div>
+                    <div>
+                        <strong>LINE</strong><br>
+                        <span style="font-size: 12px; color: #666;">LINEからも連絡可能です</span>
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top: 20px; text-align: center; color: #666;">
+                ※時間外でもご相談に応じます。お気軽にお電話ください。
+            </p>
+        </div>
+    </section>
+
+    <!-- 当院の想い -->
+    <section id="philosophy" class="philosophy">
+        <div class="philosophy-content">
+            <div class="philosophy-image">
+                <img src="images/当院の想い.png" alt="当院の想い" class="philosophy-img">
+            </div>
+            <div class="philosophy-text">
+                <h2>当院の想い</h2>
+                <p>
+                    痛みや不調の原因がわからない、診断を受けたけれど症状が良くならない…<br>
+                    そんな方に、国家資格者の確かな技術で「痛み・不調のない日々」を取り戻すお手伝いをしています。<br><br>
+                    
+                    子育てや仕事で自分の身体のことを考える余裕がない方、痛みがある中でも我慢して頑張ってきた方、<br>
+                    そのような方々の「痛みのない生活」を実現することが私たちの使命です。<br><br>
+                    
+                    腰痛、肩こり、首こり、四十肩、膝痛、頭痛など、様々な症状に対応いたします。<br>
+                    お一人お一人の症状に合わせた最適な治療法をご提案させていただきます。
+                </p>
+            </div>
+        </div>
+    </section>
+    <!-- 予約フォーム -->
+    <section id="reservation" class="reservation">
+        <div class="section">
+            <h2>ご予約・お問い合わせ</h2>
+            <div class="form-container">
+                <p style="text-align: center; margin-bottom: 30px; color: #666;">
+                    Web予約は24時間受付中です。お急ぎの方はお電話にてお問い合わせください。
+                </p>
+                
+                <form id="reserveForm">
+                    <div class="form-group">
+                        <label for="name"><i class="fas fa-user"></i> お名前</label>
+                        <input type="text" id="name" required placeholder="山田 太郎">
+                    </div>
+                    <div class="form-group">
+                        <label for="email"><i class="fas fa-envelope"></i> メールアドレス</label>
+                        <input type="email" id="email" required placeholder="example@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone"><i class="fas fa-phone"></i> 電話番号</label>
+                        <input type="tel" id="phone" required placeholder="090-1234-5678">
+                    </div>
+                    <div class="form-group">
+                        <label for="is_new_customer"><i class="fas fa-user-plus"></i> 顧客区分</label>
+                        <select id="is_new_customer" required>
+                            <option value="">選択してください</option>
+                            <option value="true">新規のお客様</option>
+                            <option value="false">リピーターのお客様</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="referral_source"><i class="fas fa-route"></i> こちらを知ったきっかけ</label>
+                        <select id="referral_source" required>
+                            <option value="">選択してください</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="line">LINE</option>
+                            <option value="google_search">グーグル検索</option>
+                            <option value="yahoo_search">ヤフー検索</option>
+                            <option value="referral">知人の紹介</option>
+                            <option value="flyer">チラシ・看板</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="date"><i class="fas fa-calendar-alt"></i> 予約日</label>
+                        <input type="text" id="date" required placeholder="カレンダーから日付を選択">
+                    </div>
+                    <div class="form-group">
+                        <label for="time"><i class="fas fa-clock"></i> 予約時間</label>
+                        <div class="business-hours">
+                            <h4><i class="fas fa-info-circle"></i> 営業時間</h4>
+                            <div style="line-height: 1.6;">
+                                平日：9:00〜19:00 / 土曜：9:00〜12:00 / 休診：日曜・祝日
+                            </div>
+                        </div>
+                        <select id="time" required>
+                            <option value="">まず日付を選択してください</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="course"><i class="fas fa-list"></i> コース</label>
+                        <select id="course" required>
+                            <option value="">選択してください</option>
+                            <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                            <option value="1時間コース">1時間コース - 4,000円（しっかり治療・初回推奨）</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-paper-plane"></i> 予約を送信する
+                    </button>
+                </form>
+                <div id="result" class="success" style="display: none;"></div>
+            </div>
+        </div>
+    </section>
+
+
+    <script>
+        // 設定から値を取得
+        const supabaseConfig = window.AppConfig.getSupabaseConfig();
+        const SUPABASE_URL = supabaseConfig.url;
+        const SUPABASE_KEY = supabaseConfig.key;
+        const tableName = window.AppConfig.tables.reservations;
+        const scheduleTable = window.AppConfig.tables.scheduleOverrides;
+        
+        // 連絡先情報を動的に設定
+        function updateContactInfo() {
+            const contactConfig = window.AppConfig.contact;
+            document.getElementById('contact-phone').textContent = contactConfig.phone;
+            document.getElementById('access-phone').textContent = contactConfig.phone;
+            
+            // InstagramとLINEのリンクも更新
+            const instagramLinks = document.querySelectorAll('a[href*="instagram"]');
+            instagramLinks.forEach(link => {
+                link.href = contactConfig.instagram;
+            });
+            
+            const lineLinks = document.querySelectorAll('a[href*="line.me"]');
+            lineLinks.forEach(link => {
+                link.href = contactConfig.line;
+            });
+            
+            // Instagram handleも更新
+            const instagramHandle = document.querySelector('a[href*="instagram"] + div');
+            if (instagramHandle) {
+                const handleElement = instagramHandle.querySelector('a');
+                if (handleElement) {
+                    handleElement.textContent = contactConfig.instagramHandle;
+                }
+            }
+        }
+
+        // Supabase JSライブラリ読込
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
+        script.onload = () => {
+            window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            initApp();
+        };
+        document.head.appendChild(script);
+
+        // スケジュール管理関数
+        async function checkScheduleOverride(date, time = null) {
+            try {
+                const { data, error } = await window.supabase
+                    .from(scheduleTable)
+                    .select('*')
+                    .eq('date', date);
+                
+                if (error) {
+                    console.error('スケジュール確認エラー:', error);
+                    return null;
+                }
+                
+                if (!data || data.length === 0) {
+                    return null; // 設定なし = 通常営業
+                }
+                
+                // 時間指定がある場合の確認
+                if (time) {
+                    console.log(`スケジュール確認: ${date} ${time} (休業かどうかチェック)`, data);
+                    
+                    // 1. 直接時間マッチ（旧形式との互換性）
+                    const directMatch = data.find(d => d.time === time);
+                    if (directMatch) {
+                        console.log(`直接マッチ: ${time} → ${directMatch.status}`);
+                        return directMatch.status;
+                    }
+                    
+                    // 2. 時間範囲内チェック（新形式）
+                    for (const schedule of data) {
+                        if (schedule.start_time && schedule.end_time) {
+                            // 時間文字列を正規化（HH:MM形式に統一）
+                            const normalizeTime = (timeStr) => {
+                                if (!timeStr) return '';
+                                // HH:MM:SS形式をHH:MM形式に変換
+                                return timeStr.slice(0, 5);
+                            };
+                            
+                            const normalizedTime = normalizeTime(time);
+                            const normalizedStartTime = normalizeTime(schedule.start_time);
+                            const normalizedEndTime = normalizeTime(schedule.end_time);
+                            
+                            console.log(`スケジュール確認: ${normalizedTime} vs ${normalizedStartTime}-${normalizedEndTime} (${schedule.status})`);
+                            
+                            // 開始時間以上、終了時間未満（開始時間は休業、終了時間は営業可能）
+                            if (normalizedTime >= normalizedStartTime && normalizedTime < normalizedEndTime) {
+                                console.log(`範囲マッチ: ${normalizedTime} は ${normalizedStartTime}〜${normalizedEndTime}の範囲内 → ${schedule.status}`);
+                                return schedule.status;
+                            }
+                        }
+                    }
+                    
+                    console.log(`マッチなし: ${time}`);
+                }
+                
+                // 終日設定があるかチェック（時間範囲設定も含む）
+                if (data && data.length > 0) {
+                    // 時間範囲設定がある場合は営業日として扱う
+                    const hasTimeRange = data.some(d => d.start_time && d.end_time);
+                    if (hasTimeRange) {
+                        return 'open';
+                    }
+                    
+                    // 終日設定をチェック
+                    const dayMatch = data.find(d => d.time === null && !d.start_time && !d.end_time);
+                    if (dayMatch) {
+                        return dayMatch.status;
+                    }
+                }
+                
+                return null; // 設定なし
+            } catch (error) {
+                console.error('スケジュール確認エラー:', error);
+                return null;
+            }
+        }
+
+        // 日本の祝日判定機能
+        function isJapaneseHoliday(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const dayOfWeek = date.getDay();
+            
+            // 固定祝日
+            const fixedHolidays = {
+                '1-1': '元日',
+                '2-11': '建国記念の日',
+                '2-23': '天皇誕生日',
+                '4-29': 'みどりの日',
+                '5-3': '憲法記念日',
+                '5-4': 'みどりの日',
+                '5-5': 'こどもの日',
+                '8-11': '山の日',
+                '11-3': '文化の日',
+                '11-23': '勤労感謝の日'
+            };
+            
+            const key = `${month}-${day}`;
+            if (fixedHolidays[key]) {
+                return fixedHolidays[key];
+            }
+            
+            // ハッピーマンデー等の移動祝日
+            if (month === 1) {
+                // 成人の日（1月第2月曜日）
+                const secondMonday = getWeekdayInMonth(year, 1, 1, 2);
+                if (day === secondMonday) return '成人の日';
+            }
+            
+            if (month === 3) {
+                // 春分の日（概算）
+                const springEquinox = Math.floor(20.8431 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+                if (day === springEquinox) return '春分の日';
+            }
+            
+            if (month === 7) {
+                // 海の日（7月第3月曜日）
+                const thirdMonday = getWeekdayInMonth(year, 7, 1, 3);
+                if (day === thirdMonday) return '海の日';
+            }
+            
+            if (month === 9) {
+                // 敬老の日（9月第3月曜日）
+                const thirdMonday = getWeekdayInMonth(year, 9, 1, 3);
+                if (day === thirdMonday) return '敬老の日';
+                
+                // 秋分の日（概算）
+                const autumnEquinox = Math.floor(23.2488 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+                if (day === autumnEquinox) return '秋分の日';
+            }
+            
+            if (month === 10) {
+                // スポーツの日（10月第2月曜日）
+                const secondMonday = getWeekdayInMonth(year, 10, 1, 2);
+                if (day === secondMonday) return 'スポーツの日';
+            }
+            
+            // 振替休日
+            const prevDay = new Date(date);
+            prevDay.setDate(day - 1);
+            if (dayOfWeek === 1 && isJapaneseHoliday(prevDay)) { // 月曜日で前日が祝日
+                return '振替休日';
+            }
+            
+            return null;
+        }
+        
+        // 指定した月の第N曜日の日付を取得
+        function getWeekdayInMonth(year, month, dayOfWeek, weekNumber) {
+            const firstDay = new Date(year, month - 1, 1);
+            const firstWeekday = firstDay.getDay();
+            let targetDate = 1 + (dayOfWeek - firstWeekday + 7) % 7;
+            targetDate += (weekNumber - 1) * 7;
+            return targetDate;
+        }
+
+        // 日本の祝日判定機能
+        function isJapaneseHoliday(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const dayOfWeek = date.getDay();
+            
+            // 固定祝日
+            const fixedHolidays = {
+                '1-1': '元日',
+                '2-11': '建国記念の日',
+                '2-23': '天皇誕生日',
+                '4-29': 'みどりの日',
+                '5-3': '憲法記念日',
+                '5-4': 'みどりの日',
+                '5-5': 'こどもの日',
+                '8-11': '山の日',
+                '11-3': '文化の日',
+                '11-23': '勤労感謝の日'
+            };
+            
+            const key = `${month}-${day}`;
+            if (fixedHolidays[key]) {
+                return fixedHolidays[key];
+            }
+            
+            // ハッピーマンデー等の移動祝日
+            if (month === 1) {
+                // 成人の日（1月第2月曜日）
+                const secondMonday = getWeekdayInMonth(year, 1, 1, 2);
+                if (day === secondMonday) return '成人の日';
+            }
+            
+            if (month === 3) {
+                // 春分の日（概算）
+                const springEquinox = Math.floor(20.8431 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+                if (day === springEquinox) return '春分の日';
+            }
+            
+            if (month === 7) {
+                // 海の日（7月第3月曜日）
+                const thirdMonday = getWeekdayInMonth(year, 7, 1, 3);
+                if (day === thirdMonday) return '海の日';
+            }
+            
+            if (month === 9) {
+                // 敬老の日（9月第3月曜日）
+                const thirdMonday = getWeekdayInMonth(year, 9, 1, 3);
+                if (day === thirdMonday) return '敬老の日';
+                
+                // 秋分の日（概算）
+                const autumnEquinox = Math.floor(23.2488 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+                if (day === autumnEquinox) return '秋分の日';
+            }
+            
+            if (month === 10) {
+                // スポーツの日（10月第2月曜日）
+                const secondMonday = getWeekdayInMonth(year, 10, 1, 2);
+                if (day === secondMonday) return 'スポーツの日';
+            }
+            
+            // 振替休日
+            const prevDay = new Date(date);
+            prevDay.setDate(day - 1);
+            if (dayOfWeek === 1 && isJapaneseHoliday(prevDay)) { // 月曜日で前日が祝日
+                return '振替休日';
+            }
+            
+            return null;
+        }
+        
+        // 指定した月の第N曜日の日付を取得
+        function getWeekdayInMonth(year, month, dayOfWeek, weekNumber) {
+            const firstDay = new Date(year, month - 1, 1);
+            const firstWeekday = firstDay.getDay();
+            let targetDate = 1 + (dayOfWeek - firstWeekday + 7) % 7;
+            targetDate += (weekNumber - 1) * 7;
+            return targetDate;
+        }
+
+        // リファラー自動検出
+        function detectReferralSource() {
+            const referrer = document.referrer.toLowerCase();
+            
+            // URLパラメータからの検出
+            const urlParams = new URLSearchParams(window.location.search);
+            const utmSource = urlParams.get('utm_source');
+            const ref = urlParams.get('ref');
+            
+            if (utmSource) {
+                switch(utmSource) {
+                    case 'instagram': return 'instagram';
+                    case 'line': return 'line';
+                    case 'google': return 'google_search';
+                    case 'yahoo': return 'yahoo_search';
+                    default: return 'other';
+                }
+            }
+            
+            if (ref) {
+                switch(ref) {
+                    case 'ig': return 'instagram';
+                    case 'line': return 'line';
+                    default: return 'other';
+                }
+            }
+            
+            // リファラーからの検出
+            if (referrer.includes('instagram.com')) return 'instagram';
+            if (referrer.includes('line.me') || referrer.includes('liff.line.me')) return 'line';
+            if (referrer.includes('google.com') || referrer.includes('google.co.jp')) return 'google_search';
+            if (referrer.includes('yahoo.com') || referrer.includes('yahoo.co.jp')) return 'yahoo_search';
+            
+            // 直接アクセスの場合は空文字（ユーザーに選択させる）
+            return '';
+        }
+
+        function initApp() {
+            // 連絡先情報を更新
+            updateContactInfo();
+            
+            // リファラー自動設定
+            const detectedSource = detectReferralSource();
+            if (detectedSource) {
+                const referralSelect = document.getElementById('referral_source');
+                if (referralSelect) {
+                    referralSelect.value = detectedSource;
+                }
+            }
+            
+            // flatpickrカレンダーUI初期化
+            window.calendar = flatpickr('#date', {
+                locale: flatpickr.l10ns.ja,
+                minDate: 'today',
+                dateFormat: 'Y-m-d',
+                disable: [
+                    // 日曜日と祝日を無効化（管理者設定で上書き可能）
+                    function(date) {
+                        return date.getDay() === 0 || isJapaneseHoliday(date);
+                    }
+                ],
+                enable: [], // 管理者設定の日曜日を後で追加
+                onDayCreate: async function(dObj, dStr, fp, dayElem) {
+                    // ローカル日付で正確な日付文字列を生成
+                    const year = dayElem.dateObj.getFullYear();
+                    const month = String(dayElem.dateObj.getMonth() + 1).padStart(2, '0');
+                    const date = String(dayElem.dateObj.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${date}`;
+                    const day = dayElem.dateObj.getDay();
+                    const holidayName = isJapaneseHoliday(dayElem.dateObj);
+                    
+                    console.log(`カレンダー表示処理: ${dateStr} (曜日:${day}, 祝日:${holidayName || 'なし'})`);
+                    
+                    // 管理者設定の終日休業チェック
+                    const dayOverride = await checkScheduleOverride(dateStr);
+                    console.log(`管理者設定確認: ${dateStr} -> ${dayOverride}`);
+                    
+                    if (dayOverride === 'closed') {
+                        // 管理者が休業設定した日
+                        dayElem.innerHTML += '<span style="color:red;font-size:1.2em;">×</span>';
+                        dayElem.style.background = '#ffebee';
+                        dayElem.style.pointerEvents = 'none';
+                        dayElem.classList.add('flatpickr-disabled');
+                        console.log(`休業設定適用: ${dateStr}`);
+                        return;
+                    }
+                    
+                    // 通常の休診日（日曜・祝日）の処理
+                    if (day === 0 || holidayName) { // 日曜日または祝日
+                        if (dayOverride === 'open') {
+                            // 管理者が営業設定した日曜・祝日 → 営業日として表示
+                            const specialText = holidayName ? `特別営業（${holidayName}）` : '特別営業（日）';
+                            dayElem.innerHTML += '<span style="color:green;font-size:1.2em;">〇</span>';
+                            dayElem.style.background = '#e8f5e8';
+                            dayElem.style.pointerEvents = 'auto';
+                            dayElem.classList.remove('flatpickr-disabled');
+                            dayElem.removeAttribute('aria-disabled');
+                            dayElem.setAttribute('tabindex', '0');
+                            dayElem.title = specialText;
+                            console.log(`${holidayName ? '祝日' : '日曜'}営業設定適用: ${dateStr} -> 営業日`);
+                            return;
+                        } else {
+                            // 通常の日曜・祝日（休診日）
+                            const restText = holidayName ? `休診日（${holidayName}）` : '休診日（日曜）';
+                            dayElem.innerHTML += '<span style="color:red;font-size:1.2em;">×</span>';
+                            dayElem.style.background = '#ffebee';
+                            dayElem.style.pointerEvents = 'none';
+                            dayElem.classList.add('flatpickr-disabled');
+                            dayElem.title = restText;
+                            console.log(`通常の${holidayName ? '祝日' : '日曜日'}: ${dateStr} -> 休診`);
+                            return;
+                        }
+                    }
+                    
+                    // 管理者が特別営業設定（平日・土曜でも特別営業の場合）
+                    if (dayOverride === 'open') {
+                        dayElem.innerHTML += '<span style="color:blue;font-size:1.2em;">〇</span>';
+                        dayElem.style.background = '#e3f2fd';
+                        return;
+                    }
+                    
+                    // 営業日の空き状況確認
+                    let times = [];
+                    if (day >= 1 && day <= 5) {
+                        for (let h = 9; h <= 18; h++) {
+                            times.push(`${h.toString().padStart(2, '0')}:00`);
+                            times.push(`${h.toString().padStart(2, '0')}:30`);
+                        }
+                    } else if (day === 6) {
+                        for (let h = 9; h <= 11; h++) {
+                            times.push(`${h.toString().padStart(2, '0')}:00`);
+                            times.push(`${h.toString().padStart(2, '0')}:30`);
+                        }
+                        times.push('12:00'); // 12時ちょうどを追加
+                    } else {
+                        // 日曜・祝日でも管理者営業設定がある場合は時間を設定
+                        if (dayOverride === 'open') {
+                            for (let h = 9; h <= 18; h++) {
+                                times.push(`${h.toString().padStart(2, '0')}:00`);
+                                times.push(`${h.toString().padStart(2, '0')}:30`);
+                            }
+                        } else {
+                            // 営業設定がない日曜・祝日は空き状況確認せずに終了
+                            return;
+                        }
+                    }
+                    
+                    const { data: reserved } = await window.supabase.from(tableName).select('datetime');
+                    const reservedArr = Array.isArray(reserved) ? reserved : [];
+                    let availableCount = 0;
+                    
+                    for (const t of times) {
+                        const dt = `${dateStr}T${t}`;
+                        const isReserved = reservedArr.some(r => r.datetime === dt);
+                        const timeOverride = await checkScheduleOverride(dateStr, t);
+                        
+                        // 予約済みでなく、管理者が休業設定していない時間
+                        if (!isReserved && timeOverride !== 'closed') {
+                            availableCount++;
+                        }
+                    }
+                    
+                    if (availableCount === 0) {
+                        dayElem.innerHTML += '<span style="color:red;font-size:1.2em;">×</span>';
+                        dayElem.style.background = '#ffebee';
+                    } else {
+                        dayElem.innerHTML += '<span style="color:green;font-size:1.2em;">〇</span>';
+                        dayElem.style.background = '#e8f5e8';
+                    }
+                }
+            });
+
+            // 管理者営業設定を確認して日曜日のカレンダー表示を更新
+            setTimeout(async function() {
+                console.log('日曜日営業設定確認開始');
+                const today = new Date();
+                
+                for (let i = 0; i < 60; i++) { // 60日分チェック
+                    const checkDate = new Date(today);
+                    checkDate.setDate(today.getDate() + i);
+                    const day = checkDate.getDay();
+                    
+                    if (day === 0) { // 日曜日のみチェック
+                        const year = checkDate.getFullYear();
+                        const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${String(checkDate.getDate()).padStart(2, '0')}`;
+                        
+                        console.log(`日曜日チェック: ${dateStr}`);
+                        
+                        try {
+                            const dayOverride = await checkScheduleOverride(dateStr);
+                            console.log(`設定確認結果: ${dateStr} -> ${dayOverride}`);
+                            
+                            if (dayOverride === 'open') {
+                                console.log(`営業設定発見: ${dateStr} -> flatpickr更新開始`);
+                                
+                                // flatpickrの無効化を解除
+                                if (window.calendar) {
+                                    // 現在の無効化設定を取得
+                                    const currentDisable = window.calendar.config.disable || [];
+                                    
+                                    // 日曜日以外の無効化条件を保持
+                                    const newDisable = currentDisable.filter(disableRule => {
+                                        if (typeof disableRule === 'function') {
+                                            // 日曜日無効化関数以外は保持
+                                            const testDate = new Date(checkDate);
+                                            const isThisSunday = disableRule(testDate) && testDate.getDay() === 0;
+                                            return !isThisSunday;
+                                        }
+                                        return true;
+                                    });
+                                    
+                                    // 特定の日曜日を有効化
+                                    const enableDates = window.calendar.config.enable || [];
+                                    enableDates.push(new Date(checkDate));
+                                    
+                                    window.calendar.set('enable', enableDates);
+                                    window.calendar.redraw();
+                                    console.log(`flatpickr設定更新完了: ${dateStr}`);
+                                }
+                            }
+                        } catch (error) {
+                            console.error(`日曜日営業設定確認エラー (${dateStr}):`, error);
+                        }
+                    }
+                }
+            }, 1500); // カレンダー初期化を確実に待つ
+
+            // 日付選択時、曜日ごとに時間帯を表示（日本語化も維持）
+            document.getElementById('date').addEventListener('change', async function() {
+                const dateStr = this.value;
+                if (!dateStr) {
+                    disableCourseAndSubmit('まず日付を選択してください');
+                    return;
+                }
+                // ローカル日付でDateオブジェクトを作成（UTCズレを防ぐ）
+                const dateObj = new Date(dateStr + 'T00:00:00');
+                const day = dateObj.getDay();
+                const holidayName = isJapaneseHoliday(dateObj);
+                const timeSelect = document.getElementById('time');
+                // ローディング表示＆選択不可
+                timeSelect.innerHTML = '<option value="">読み込み中...</option>';
+                timeSelect.disabled = true;
+                // 管理者設定の確認
+                const dayOverride = await checkScheduleOverride(dateStr);
+                
+                // 管理者が終日休業設定した場合
+                if (dayOverride === 'closed') {
+                    timeSelect.innerHTML = '<option value="">管理者設定により休業です</option>';
+                    timeSelect.disabled = true;
+                    disableCourseAndSubmit('管理者設定により休業です');
+                    return;
+                }
+                
+                let times = [];
+                if (day >= 1 && day <= 5) { // 平日（9:00-18:30）
+                    for (let h = 9; h <= 18; h++) {
+                        times.push(`${h.toString().padStart(2, '0')}:00`);
+                        times.push(`${h.toString().padStart(2, '0')}:30`);
+                    }
+                } else if (day === 6) { // 土曜
+                    for (let h = 9; h <= 11; h++) { // 12時までの営業なので11時まで
+                        times.push(`${h.toString().padStart(2, '0')}:00`);
+                        times.push(`${h.toString().padStart(2, '0')}:30`);
+                    }
+                    times.push('12:00'); // 12時ちょうどを追加
+                } else { // 日祝
+                    const dayType = holidayName ? `祝日（${holidayName}）` : '日曜日';
+                    console.log(`${dayType}の時間設定処理: ${dateStr} (dayOverride: ${dayOverride})`);
+                    // 管理者が営業設定した場合は営業
+                    if (dayOverride === 'open') {
+                        console.log(`${dayType}営業設定あり: ${dateStr} -> 営業時間を設定`);
+                        // 管理者が設定した営業時間を確認（詳細な時間設定があるかチェック）
+                        const { data: scheduleData } = await window.supabase
+                            .from(scheduleTable)
+                            .select('*')
+                            .eq('date', dateStr)
+                            .eq('status', 'open');
+                        
+                        if (scheduleData && scheduleData.length > 0) {
+                            // 管理者が詳細時間を設定している場合
+                            const scheduleItem = scheduleData[0];
+                            if (scheduleItem.start_time && scheduleItem.end_time) {
+                                console.log(`詳細時間設定: ${scheduleItem.start_time} - ${scheduleItem.end_time}`);
+                                
+                                // 開始時間と終了時間をパース
+                                const [startHour, startMin] = scheduleItem.start_time.split(':').map(Number);
+                                const [endHour, endMin] = scheduleItem.end_time.split(':').map(Number);
+                                
+                                // 終了時間を分単位に変換して30分引く（最後の予約可能時間）
+                                const endTotalMin = endHour * 60 + endMin;
+                                const lastBookableMin = endTotalMin - 30; // 30分前まで予約可能
+                                const lastBookableHour = Math.floor(lastBookableMin / 60);
+                                const lastBookableMinute = lastBookableMin % 60;
+                                
+                                console.log(`予約可能時間: ${scheduleItem.start_time} ～ ${lastBookableHour.toString().padStart(2, '0')}:${lastBookableMinute.toString().padStart(2, '0')}`);
+                                
+                                // 開始時間から終了時間の30分前まで30分間隔で時間を生成
+                                let currentHour = startHour;
+                                let currentMin = startMin;
+                                
+                                while (true) {
+                                    const currentTotalMin = currentHour * 60 + currentMin;
+                                    
+                                    // 最後の予約可能時間を超えたら終了
+                                    if (currentTotalMin > lastBookableMin) {
+                                        break;
+                                    }
+                                    
+                                    times.push(`${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`);
+                                    
+                                    // 30分後に進める
+                                    currentMin += 30;
+                                    if (currentMin >= 60) {
+                                        currentMin = 0;
+                                        currentHour += 1;
+                                    }
+                                }
+                            } else {
+                                // 詳細時間設定がない場合は平日と同じ（9:00-18:30）
+                                for (let h = 9; h <= 18; h++) {
+                                    times.push(`${h.toString().padStart(2, '0')}:00`);
+                                    times.push(`${h.toString().padStart(2, '0')}:30`);
+                                }
+                            }
+                        } else {
+                            // 設定データがない場合は平日と同じ
+                            for (let h = 9; h <= 18; h++) {
+                                times.push(`${h.toString().padStart(2, '0')}:00`);
+                                times.push(`${h.toString().padStart(2, '0')}:30`);
+                            }
+                        }
+                    } else {
+                        console.log(`${dayType}営業設定なし: ${dateStr} -> 休診日`);
+                        const restMessage = holidayName ? `休診日（${holidayName}）です` : '休診日です';
+                        timeSelect.innerHTML = `<option value="">${restMessage}</option>`;
+                        timeSelect.disabled = true;
+                        disableCourseAndSubmit(restMessage);
+                        return;
+                    }
+                }
+                // 予約一覧（コースも取得）
+                const { data: reserved } = await window.supabase.from(tableName).select('datetime, course');
+                // 予約済み枠を除外するロジック（YYYY-MM-DDTHH:MM 形式で統一）
+                const reservedSet = new Set();
+                (reserved||[]).forEach(r => {
+                    // 予約開始枠
+                    const base = r.datetime.slice(0,16); // YYYY-MM-DDTHH:MM
+                    reservedSet.add(base);
+                    // 1時間コースなら+30分果も除外（ローカルタイムで判定）
+                    if (r.course === '1時間コース') {
+                        // ISO文字列を直接パースしてUTCズレを防ぐ
+                        const [datepart, timepart] = r.datetime.split('T');
+                        const [hour, min] = timepart.split(':');
+                        const dt = new Date();
+                        const [year, month, day] = datepart.split('-');
+                        dt.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        dt.setHours(parseInt(hour), parseInt(min), 0, 0);
+                        dt.setMinutes(dt.getMinutes() + 30);
+                        // YYYY-MM-DDTHH:MM 形式で生成
+                        const yyyy = dt.getFullYear();
+                        const mm = String(dt.getMonth()+1).padStart(2,'0');
+                        const dd = String(dt.getDate()).padStart(2,'0');
+                        const hh = String(dt.getHours()).padStart(2,'0');
+                        const mins = String(dt.getMinutes()).padStart(2,'0');
+                        const plus30 = `${yyyy}-${mm}-${dd}T${hh}:${mins}`;
+                        reservedSet.add(plus30);
+                    }
+                });
+                let hasAvailable = false;
+                let options = '';
+                
+                for (const t of times) {
+                    const dt = `${dateStr}T${t}`;
+                    const dtKey = dt.slice(0,16); // YYYY-MM-DDTHH:MM
+                    const isReserved = reservedSet.has(dtKey);
+                    
+                    // 管理者設定の時間別休業確認
+                    const timeOverride = await checkScheduleOverride(dateStr, t);
+                    console.log(`時間チェック: ${dateStr} ${t} -> ${timeOverride}`);
+                    
+                    if (!isReserved && timeOverride !== 'closed') {
+                        const status = timeOverride === 'open' ? '〇（特別営業）' : '〇';
+                        options += `<option value="${t}">${t} ${status}</option>`;
+                        hasAvailable = true;
+                    } else if (timeOverride === 'closed') {
+                        // 管理者設定で休業の場合は選択肢に表示しない
+                        console.log(`休業時間のため除外: ${t} (timeOverride: ${timeOverride})`);
+                        continue;
+                    } else if (isReserved) {
+                        console.log(`予約済みのため除外: ${t}`);
+                        continue;
+                    }
+                }
+                if (!hasAvailable) {
+                    options = '<option value="">全て予約済みです</option>';
+                    disableCourseAndSubmit('全て予約済みです');
+                } else {
+                    enableCourseAndSubmit();
+                }
+                timeSelect.innerHTML = options;
+                timeSelect.disabled = !hasAvailable;
+            });
+
+
+            // 予約済み時間を取得し、選択不可にする
+            async function updateDisabledTimes() {
+                const { data, error } = await window.supabase.from(tableName).select('datetime');
+                if (error) return;
+                // 予約済み時間の取得のみ（UI反映はdate/timeのchangeイベントで実施）
+            }
+            
+            // コースと送信ボタンを無効化
+            function disableCourseAndSubmit(reason) {
+                const courseSelect = document.getElementById('course');
+                const submitBtn = document.querySelector('.submit-btn');
+                
+                courseSelect.disabled = true;
+                courseSelect.innerHTML = `<option value="">${reason}</option>`;
+                
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+                submitBtn.innerHTML = '<i class="fas fa-ban"></i> 予約できません';
+            }
+            
+            // コースと送信ボタンを有効化
+            function enableCourseAndSubmit() {
+                const courseSelect = document.getElementById('course');
+                const submitBtn = document.querySelector('.submit-btn');
+                
+                courseSelect.disabled = false;
+                courseSelect.innerHTML = `
+                    <option value="">選択してください</option>
+                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                    <option value="1時間コース">1時間コース - 4,000円（しっかり治療・初回推奨）</option>
+                `;
+                
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 予約を送信する';
+            }
+            
+            // 18:30用のコース制限関数
+            function restrictCourseFor1830() {
+                const courseSelect = document.getElementById('course');
+                
+                courseSelect.innerHTML = `
+                    <option value="">選択してください</option>
+                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（時間不足のため選択不可）</option>
+                `;
+            }
+            
+            // 特別営業時間の最終枠制限関数
+            function restrictCourseForSpecialLastSlot() {
+                const courseSelect = document.getElementById('course');
+                
+                courseSelect.innerHTML = `
+                    <option value="">選択してください</option>
+                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（特別営業時間不足のため選択不可）</option>
+                `;
+            }
+            
+            // 特別営業日の時間制限チェック
+            async function checkSpecialBusinessHourRestriction(dateStr, timeStr) {
+                try {
+                    const dateObj = new Date(dateStr + 'T00:00:00');
+                    const day = dateObj.getDay();
+                    const holidayName = isJapaneseHoliday(dateObj);
+                    
+                    // 日曜日または祝日の特別営業をチェック
+                    if (day === 0 || holidayName) {
+                        const dayOverride = await checkScheduleOverride(dateStr);
+                        if (dayOverride === 'open') {
+                            // 管理者設定の営業時間を取得
+                            const { data: scheduleData } = await window.supabase
+                                .from(scheduleTable)
+                                .select('*')
+                                .eq('date', dateStr)
+                                .eq('status', 'open');
+                            
+                            if (scheduleData && scheduleData.length > 0) {
+                                const scheduleItem = scheduleData[0];
+                                if (scheduleItem.start_time && scheduleItem.end_time) {
+                                    const [endHour, endMin] = scheduleItem.end_time.split(':').map(Number);
+                                    
+                                    // 終了時間の30分前を計算
+                                    const endTotalMin = endHour * 60 + endMin;
+                                    const lastSlotMin = endTotalMin - 30;
+                                    const lastSlotHour = Math.floor(lastSlotMin / 60);
+                                    const lastSlotMinute = lastSlotMin % 60;
+                                    const lastSlotTime = `${lastSlotHour.toString().padStart(2, '0')}:${lastSlotMinute.toString().padStart(2, '0')}`;
+                                    
+                                    console.log(`特別営業最終枠チェック: 選択時間=${timeStr}, 最終枠=${lastSlotTime}`);
+                                    
+                                    // 選択した時間が最終枠の場合
+                                    if (timeStr === lastSlotTime) {
+                                        const dayType = holidayName ? `特別営業（${holidayName}）` : '特別営業（日曜）';
+                                        console.log(`${dayType}の最終枠のため30分コースのみ選択可能`);
+                                        restrictCourseForSpecialLastSlot();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    console.log('通常の時間枠：全コース選択可能');
+                } catch (error) {
+                    console.error('特別営業時間制限チェックエラー:', error);
+                }
+            }
+
+            // EmailJS初期化（設定ファイルから取得）
+            const emailJSConfig = window.AppConfig.getEmailJSConfig();
+            
+            if (!emailJSConfig.publicKey || emailJSConfig.publicKey === 'YOUR_PUBLIC_KEY_HERE') {
+                window.AppLogger.error('EmailJS Public Keyが設定されていません！');
+                window.AppLogger.info('設定手順:');
+                window.AppLogger.info('1. https://dashboard.emailjs.com/admin/account にアクセス');
+                window.AppLogger.info('2. API Keys セクションの Public Key をコピー');
+                window.AppLogger.info('3. config/config.js または環境変数で設定');
+                
+                // メール機能を無効化
+                window.emailJSEnabled = false;
+            } else {
+                try {
+                    emailjs.init(emailJSConfig.publicKey);
+                    window.AppLogger.info('EmailJS初期化完了', emailJSConfig.publicKey);
+                    window.emailJSEnabled = true;
+                } catch (error) {
+                    window.AppLogger.error('EmailJS初期化エラー:', error);
+                    window.emailJSEnabled = false;
+                }
+            }
+
+            // 予約フォーム送信
+            document.getElementById('reserveForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                const phone = document.getElementById('phone').value;
+                const date = document.getElementById('date').value;
+                const time = document.getElementById('time').value;
+                const course = document.getElementById('course').value;
+                const isNewCustomer = document.getElementById('is_new_customer').value === 'true';
+                const referralSource = document.getElementById('referral_source').value;
+                const datetime = `${date}T${time}`;
+                // 排他制御: 予約済みと休業時間のチェック
+                const [existsResult, scheduleResult] = await Promise.all([
+                    window.supabase.from(tableName).select('*').eq('datetime', datetime),
+                    checkScheduleOverride(date, time)
+                ]);
+                
+                // 1. 予約済みチェック
+                if (existsResult.data && existsResult.data.length > 0) {
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> その時間はすでに予約が入っています。別の時間を選択してください。';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#dc3545';
+                    resultDiv.style.background = '#f8d7da';
+                    resultDiv.style.borderColor = '#f5c6cb';
+                    return;
+                }
+                
+                // 2. 休業時間チェック
+                if (scheduleResult === 'closed') {
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> 選択された時間は管理者により休業時間に設定されています。別の時間を選択してください。';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#dc3545';
+                    resultDiv.style.background = '#f8d7da';
+                    resultDiv.style.borderColor = '#f5c6cb';
+                    return;
+                }
+                // 予約登録
+                const { error } = await window.supabase.from(tableName).insert([{ 
+                    name, 
+                    phone, 
+                    datetime, 
+                    course, 
+                    email,
+                    is_new_customer: isNewCustomer,
+                    referral_source: referralSource
+                }]);
+                if (error) {
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> 予約登録に失敗しました。';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#dc3545';
+                    resultDiv.style.background = '#f8d7da';
+                    resultDiv.style.borderColor = '#f5c6cb';
+                    return;
+                }
+                // EmailJSでGmail通知（お店・本人両方に送信）
+                console.log('メール送信開始:', { name, phone, datetime, course, email });
+                
+                if (!window.emailJSEnabled) {
+                    console.warn('⚠️ EmailJSが無効のため、メール送信をスキップします');
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール設定が必要です）';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#28a745';
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.borderColor = '#c3e6cb';
+                    document.getElementById('reserveForm').reset();
+                    await renderReservations();
+                    document.getElementById('date').dispatchEvent(new Event('change'));
+                    return;
+                }
+                
+                // emailjs.send('service_ppi835a', 'template_jcdlzq6', {
+                //     name: name,
+                //     phone: phone,
+                //     datetime: datetime,
+                //     course: course,
+                //     to_email: 'yoshitaka.t.free888@gmail.com',
+                //     user_email: email,
+                //     message: `新しい予約が入りました。\n\n【予約内容】\nお名前: ${name}\n電話番号: ${phone}\n予約日時: ${datetime.replace('T', ' ')}\nコース: ${course}\nメール: ${email}`
+                // }).then(function(response) {
+                //     console.log('メール送信成功:', response);
+                //     const resultDiv = document.getElementById('result');
+                //     resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）';
+                //     resultDiv.style.display = 'block';
+                //     resultDiv.style.color = '#28a745';
+                //     resultDiv.style.background = '#d4edda';
+                //     resultDiv.style.borderColor = '#c3e6cb';
+                // }, function(error) {
+                //     console.error('メール送信エラー:', error);
+                //     const resultDiv = document.getElementById('result');
+                //     resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small>`;
+                //     resultDiv.style.display = 'block';
+                //     resultDiv.style.color = '#856404';
+                //     resultDiv.style.background = '#fff3cd';
+                //     resultDiv.style.borderColor = '#ffeaa7';
+                // });
+                document.getElementById('reserveForm').reset();
+                // 時間帯再描画
+                document.getElementById('date').dispatchEvent(new Event('change'));
+            });
+            
+            // 時間選択時のイベントリスナー追加
+            document.getElementById('time').addEventListener('change', async function() {
+                const timeValue = this.value;
+                const dateValue = document.getElementById('date').value;
+                
+                if (timeValue && dateValue) {
+                    enableCourseAndSubmit();
+                    
+                    // 18:30の場合は1時間コースを制限（通常営業時間）
+                    if (timeValue === '18:30') {
+                        restrictCourseFor1830();
+                        return;
+                    }
+                    
+                    // 特別営業日の最終時間枠チェック
+                    await checkSpecialBusinessHourRestriction(dateValue, timeValue);
+                } else {
+                    disableCourseAndSubmit('時間を選択してください');
+                }
+            });
+
+
+
+
+            // 初期表示
+            updateDisabledTimes();
+            
+            // 初期状態でコースと送信ボタンを無効化
+            disableCourseAndSubmit('まず日付と時間を選択してください');
+        }
+    </script>
+
+
+</body>
+</html>
