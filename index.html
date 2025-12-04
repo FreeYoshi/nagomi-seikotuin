@@ -547,6 +547,17 @@
         <div class="access-info">
             <div class="access-grid">
                 <div class="access-item">
+                    <div class="icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div>
+                        <strong>住所</strong><br>
+                        〒880-0211<br>
+                        宮崎県宮崎市佐土原町下田島１０２９７<br>
+                        <a href="https://maps.app.goo.gl/QjzRbJwJV2uhiQ9h8" target="_blank" style="color: #4285F4; text-decoration: none; font-size: 12px;">
+                            <i class="fas fa-external-link-alt"></i> Googleマップで開く
+                        </a>
+                    </div>
+                </div>
+                <div class="access-item">
                     <div class="icon"><i class="fas fa-phone"></i></div>
                     <div>
                         <strong>お電話</strong><br>
@@ -1109,7 +1120,7 @@
                             times.push(`${h.toString().padStart(2, '0')}:00`);
                             times.push(`${h.toString().padStart(2, '0')}:30`);
                         }
-                        times.push('12:00'); // 12時ちょうどを追加
+                        // 12:00は削除（11:30が最後の予約可能時間）
                     } else {
                         // 日曜・祝日でも管理者営業設定がある場合は時間を設定
                         if (dayOverride === 'open') {
@@ -1242,12 +1253,12 @@
                         times.push(`${h.toString().padStart(2, '0')}:00`);
                         times.push(`${h.toString().padStart(2, '0')}:30`);
                     }
-                } else if (day === 6) { // 土曜
-                    for (let h = 9; h <= 11; h++) { // 12時までの営業なので11時まで
+                } else if (day === 6) { // 土曜（12時まで営業、11時半が最後の予約）
+                    for (let h = 9; h <= 11; h++) { // 11時半までの予約
                         times.push(`${h.toString().padStart(2, '0')}:00`);
                         times.push(`${h.toString().padStart(2, '0')}:30`);
                     }
-                    times.push('12:00'); // 12時ちょうどを追加
+                    // 12:00は削除（11:30が最後の予約可能時間）
                 } else { // 日祝
                     const dayType = holidayName ? `祝日（${holidayName}）` : '日曜日';
                     console.log(`${dayType}の時間設定処理: ${dateStr} (dayOverride: ${dayOverride})`);
@@ -1445,6 +1456,17 @@
                     <option value="">選択してください</option>
                     <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
                     <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（特別営業時間不足のため選択不可）</option>
+                `;
+            }
+            
+            // 土曜日11:30用のコース制限関数
+            function restrictCourseForSaturdayLastSlot() {
+                const courseSelect = document.getElementById('course');
+                
+                courseSelect.innerHTML = `
+                    <option value="">選択してください</option>
+                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（12時終了のため選択不可）</option>
                 `;
             }
             
@@ -1662,6 +1684,15 @@
                     if (timeValue === '18:30') {
                         restrictCourseFor1830();
                         return;
+                    }
+                    
+                    // 土曜日11:30の場合は1時間コースを制限（12時終了のため）
+                    if (timeValue === '11:30') {
+                        const dateObj = new Date(dateValue + 'T00:00:00');
+                        if (dateObj.getDay() === 6) { // 土曜日
+                            restrictCourseForSaturdayLastSlot();
+                            return;
+                        }
                     }
                     
                     // 特別営業日の最終時間枠チェック
