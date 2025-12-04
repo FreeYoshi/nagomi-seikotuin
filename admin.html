@@ -407,7 +407,15 @@
             <main class="content">
                 <!-- 予約一覧セクション -->
                 <section id="reservationsSection" class="content-section active">
-                    <h2><i class="fas fa-calendar-check"></i> 予約一覧</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2><i class="fas fa-calendar-check"></i> 予約一覧</h2>
+                        <div>
+                            <button onclick="loadReservations()" class="btn btn-success" style="margin-right: 10px;">
+                                <i class="fas fa-sync-alt"></i> 更新
+                            </button>
+                            <span id="lastUpdateTime" style="color: #666; font-size: 12px;"></span>
+                        </div>
+                    </div>
                     <table id="reservationTable" class="admin-table">
                         <thead>
                             <tr>
@@ -1006,6 +1014,15 @@
             
             if (sectionName === 'reservations') {
                 loadReservations();
+                
+                // 30秒ごとに自動更新（予約一覧のみ）
+                setInterval(() => {
+                    const currentSection = document.querySelector('.nav-link.active')?.dataset.section;
+                    if (currentSection === 'reservations') {
+                        console.log('🔄 予約データ自動更新');
+                        loadReservations();
+                    }
+                }, 30000);
             } else if (sectionName === 'schedule') {
                 loadScheduleOverrides();
             }
@@ -1096,6 +1113,10 @@
 
         // 予約一覧の読み込み
         async function loadReservations() {
+            console.log('📋 予約一覧読み込み開始');
+            console.log('使用テーブル:', reservationTable);
+            console.log('Supabaseクライアント:', !!window.supabase);
+            
             const tbody = document.querySelector('#reservationTable tbody');
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
             
@@ -1105,13 +1126,27 @@
                     .select('*')
                     .order('datetime', { ascending: true });
                 
+                console.log('🔍 予約データ取得結果:', { data, error, count: data?.length });
+                
                 tbody.innerHTML = '';
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ 予約データ取得エラー:', error);
+                    throw error;
+                }
                 
                 if (!data || data.length === 0) {
+                    console.log('📭 予約データが0件です');
                     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">予約はありません</td></tr>';
                     return;
+                }
+                
+                console.log('✅ 予約データ表示開始:', data.length + '件');
+                
+                // 最終更新時刻を表示
+                const updateTimeElement = document.getElementById('lastUpdateTime');
+                if (updateTimeElement) {
+                    updateTimeElement.textContent = `最終更新: ${new Date().toLocaleTimeString()}`;
                 }
                 
                 data.forEach(reservation => {

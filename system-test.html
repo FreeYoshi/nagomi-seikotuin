@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>和整骨院 予約システム - 最終テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .loading { background: #e2e3e5; border-color: #d6d8db; }
+        .test-result { margin: 10px 0; padding: 10px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧪 和整骨院 予約システム - 最終テスト</h1>
+    
+    <div class="test-section">
+        <h2>📋 テスト項目</h2>
+        <button onclick="runAllTests()">🚀 全テスト実行</button>
+        <button onclick="testDatabase()">💾 データベース接続テスト</button>
+        <button onclick="testReservationFlow()">📅 予約フローテスト</button>
+        <button onclick="testAdminSystem()">👨‍💼 管理者システムテスト</button>
+        <button onclick="testCalendar()">📆 カレンダー機能テスト</button>
+        <button onclick="testEmail()">📧 メール機能テスト</button>
+    </div>
+
+    <div id="testResults"></div>
+
+    <!-- 設定ファイル読み込み -->
+    <script src="config/env.js"></script>
+    <script src="config/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+    <script>
+        let supabaseClient;
+        let testResults = [];
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const supabaseConfig = window.AppConfig.getSupabaseConfig();
+                supabaseClient = supabase.createClient(supabaseConfig.url, supabaseConfig.key);
+                
+                const emailConfig = window.AppConfig.getEmailJSConfig();
+                emailjs.init(emailConfig.publicKey);
+                
+                console.log('✅ テストシステム初期化完了');
+                addResult('初期化', '設定ファイル読み込み完了', 'success');
+            } catch (error) {
+                console.error('❌ 初期化エラー:', error);
+                addResult('初期化', `エラー: ${error.message}`, 'error');
+            }
+        });
+
+        function addResult(test, message, type) {
+            const result = { test, message, type, timestamp: new Date().toLocaleTimeString() };
+            testResults.push(result);
+            
+            const resultsDiv = document.getElementById('testResults');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-result ${type}`;
+            testDiv.innerHTML = `
+                <strong>[${result.timestamp}] ${result.test}:</strong> ${result.message}
+            `;
+            resultsDiv.appendChild(testDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function runAllTests() {
+            document.getElementById('testResults').innerHTML = '';
+            testResults = [];
+            
+            addResult('システム', '全テスト開始', 'loading');
+            
+            await testDatabase();
+            await testCalendar();
+            await testReservationFlow();
+            await testAdminSystem();
+            await testEmail();
+            
+            // 結果サマリー
+            const successCount = testResults.filter(r => r.type === 'success').length;
+            const errorCount = testResults.filter(r => r.type === 'error').length;
+            const warningCount = testResults.filter(r => r.type === 'warning').length;
+            
+            const summaryType = errorCount > 0 ? 'error' : (warningCount > 0 ? 'warning' : 'success');
+            addResult('完了', `テスト完了 - 成功:${successCount}, エラー:${errorCount}, 警告:${warningCount}`, summaryType);
+        }
+
+        async function testDatabase() {
+            addResult('データベース', 'Supabase接続テスト開始', 'loading');
+            
+            try {
+                // 接続テスト
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) throw error;
+                
+                addResult('データベース', '✅ Supabase接続成功', 'success');
+                
+                // テーブル構造確認
+                const tables = ['reservations', 'admin_users', 'schedule_overrides'];
+                for (const table of tables) {
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from(table)
+                            .select('*')
+                            .limit(1);
+                        
+                        if (error) throw error;
+                        addResult('データベース', `✅ ${table}テーブル正常`, 'success');
+                    } catch (err) {
+                        addResult('データベース', `❌ ${table}テーブルエラー: ${err.message}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                addResult('データベース', `❌ 接続失敗: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCalendar() {
+            addResult('カレンダー', 'カレンダー機能テスト開始', 'loading');
+            
+            try {
+                // 祝日判定テスト
+                const testDate = new Date('2025-01-01'); // 元日
+                const isHoliday = window.isJapaneseHoliday && window.isJapaneseHoliday(testDate);
+                
+                if (isHoliday) {
+                    addResult('カレンダー', '✅ 祝日判定機能正常', 'success');
+                } else {
+                    addResult('カレンダー', '⚠️ 祝日判定機能が見つからない', 'warning');
+                }
+                
+                // スケジュール管理機能テスト
+                const testScheduleDate = '2025-12-31';
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('schedule_overrides')
+                        .select('*')
+                        .eq('date', testScheduleDate);
+                    
+                    if (error) throw error;
+                    addResult('カレンダー', '✅ スケジュール管理機能正常', 'success');
+                } catch (err) {
+                    addResult('カレンダー', `❌ スケジュール管理エラー: ${err.message}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult('カレンダー', `❌ テストエラー: ${error.message}`, 'error');
+            }
+        }
+
+        async function testReservationFlow() {
+            addResult('予約システム', '予約フロー統合テスト開始', 'loading');
+            
+            try {
+                // テスト予約データ
+                const testReservation = {
+                    name: 'テスト太郎',
+                    phone: '090-0000-0000',
+                    datetime: '2025-12-20T10:00',
+                    course: '30分コース',
+                    email: 'test@example.com',
+                    is_new_customer: true,
+                    referral_source: 'google_search'
+                };
+                
+                // 予約作成テスト
+                const { data: insertData, error: insertError } = await supabaseClient
+                    .from('reservations')
+                    .insert([testReservation])
+                    .select();
+                
+                if (insertError) throw insertError;
+                
+                const reservationId = insertData[0].id;
+                addResult('予約システム', '✅ 予約作成成功', 'success');
+                
+                // 予約確認テスト
+                const { data: selectData, error: selectError } = await supabaseClient
+                    .from('reservations')
+                    .select('*')
+                    .eq('id', reservationId);
+                
+                if (selectError) throw selectError;
+                
+                if (selectData.length > 0) {
+                    addResult('予約システム', '✅ 予約データ確認成功', 'success');
+                } else {
+                    addResult('予約システム', '❌ 予約データが見つからない', 'error');
+                }
+                
+                // 予約削除（テストデータクリーンアップ）
+                const { error: deleteError } = await supabaseClient
+                    .from('reservations')
+                    .delete()
+                    .eq('id', reservationId);
+                
+                if (deleteError) throw deleteError;
+                addResult('予約システム', '✅ テストデータクリーンアップ完了', 'success');
+                
+            } catch (error) {
+                addResult('予約システム', `❌ エラー: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAdminSystem() {
+            addResult('管理システム', '管理者システムテスト開始', 'loading');
+            
+            try {
+                // 管理者認証テスト
+                const { data, error } = await supabaseClient
+                    .from('admin_users')
+                    .select('*')
+                    .eq('id', 'admin_k7m9p2x4q8');
+                
+                if (error) throw error;
+                
+                if (data.length > 0) {
+                    addResult('管理システム', '✅ 管理者アカウント確認', 'success');
+                } else {
+                    addResult('管理システム', '❌ 管理者アカウントが見つからない', 'error');
+                }
+                
+                // 予約一覧取得テスト
+                const { data: reservations, error: reservationError } = await supabaseClient
+                    .from('reservations')
+                    .select('*')
+                    .order('datetime', { ascending: true });
+                
+                if (reservationError) throw reservationError;
+                
+                addResult('管理システム', `✅ 予約一覧取得成功 (${reservations.length}件)`, 'success');
+                
+            } catch (error) {
+                addResult('管理システム', `❌ エラー: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmail() {
+            addResult('メールシステム', 'EmailJS設定テスト開始', 'loading');
+            
+            try {
+                const emailConfig = window.AppConfig.getEmailJSConfig();
+                
+                if (emailConfig.publicKey && emailConfig.serviceId && emailConfig.templateId) {
+                    addResult('メールシステム', '✅ EmailJS設定確認', 'success');
+                } else {
+                    addResult('メールシステム', '⚠️ EmailJS設定が不完全', 'warning');
+                }
+                
+                // 実際のメール送信テストは本番環境では行わない
+                addResult('メールシステム', 'ℹ️ メール送信テストはスキップ（本番環境保護）', 'warning');
+                
+            } catch (error) {
+                addResult('メールシステム', `❌ エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 環境情報表示
+        window.onload = function() {
+            const envInfo = document.createElement('div');
+            envInfo.className = 'test-section';
+            envInfo.innerHTML = `
+                <h3>🌍 環境情報</h3>
+                <p><strong>URL:</strong> ${window.location.href}</p>
+                <p><strong>ユーザーエージェント:</strong> ${navigator.userAgent}</p>
+                <p><strong>Supabase URL:</strong> ${window.AppConfig ? window.AppConfig.getSupabaseConfig().url : '設定なし'}</p>
+            `;
+            document.body.insertBefore(envInfo, document.getElementById('testResults'));
+        };
+    </script>
+</body>
+</html>

@@ -456,6 +456,11 @@
         .flatpickr-day.disabled,
         .flatpickr-day.flatpickr-disabled {
             color: #666 !important;
+            pointer-events: none !important;
+        }
+        .flatpickr-day:not(.flatpickr-disabled):not(.disabled) {
+            pointer-events: auto !important;
+            cursor: pointer !important;
         }
         .flatpickr-weekday {
             color: #555 !important;
@@ -1085,6 +1090,10 @@
                     if (dayOverride === 'open') {
                         dayElem.innerHTML += '<span style="color:blue;font-size:1.2em;">〇</span>';
                         dayElem.style.background = '#e3f2fd';
+                        dayElem.style.pointerEvents = 'auto';
+                        dayElem.classList.remove('flatpickr-disabled');
+                        dayElem.removeAttribute('aria-disabled');
+                        dayElem.setAttribute('tabindex', '0');
                         return;
                     }
                     
@@ -1132,9 +1141,15 @@
                     if (availableCount === 0) {
                         dayElem.innerHTML += '<span style="color:red;font-size:1.2em;">×</span>';
                         dayElem.style.background = '#ffebee';
+                        dayElem.style.pointerEvents = 'none';
+                        dayElem.classList.add('flatpickr-disabled');
                     } else {
                         dayElem.innerHTML += '<span style="color:green;font-size:1.2em;">〇</span>';
                         dayElem.style.background = '#e8f5e8';
+                        dayElem.style.pointerEvents = 'auto';
+                        dayElem.classList.remove('flatpickr-disabled');
+                        dayElem.removeAttribute('aria-disabled');
+                        dayElem.setAttribute('tabindex', '0');
                     }
                 }
             });
@@ -1546,7 +1561,11 @@
                     return;
                 }
                 // 予約登録
-                const { error } = await window.supabase.from(tableName).insert([{ 
+                console.log('予約データ送信開始:', { name, phone, datetime, course, email, isNewCustomer, referralSource });
+                console.log('使用テーブル:', tableName);
+                console.log('Supabaseクライアント:', !!window.supabase);
+                
+                const { data, error } = await window.supabase.from(tableName).insert([{ 
                     name, 
                     phone, 
                     datetime, 
@@ -1554,16 +1573,22 @@
                     email,
                     is_new_customer: isNewCustomer,
                     referral_source: referralSource
-                }]);
+                }]).select();
+                
+                console.log('予約登録結果:', { data, error });
+                
                 if (error) {
+                    console.error('❌ 予約登録エラー詳細:', error);
                     const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> 予約登録に失敗しました。';
+                    resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約登録に失敗しました。<br><small>エラー: ${error.message}</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#dc3545';
                     resultDiv.style.background = '#f8d7da';
                     resultDiv.style.borderColor = '#f5c6cb';
                     return;
                 }
+                
+                console.log('✅ 予約登録成功:', data);
                 // EmailJSでGmail通知（お店・本人両方に送信）
                 console.log('メール送信開始:', { name, phone, datetime, course, email });
                 

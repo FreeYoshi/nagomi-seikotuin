@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>予約システム デバッグ</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        .info { background: #d1ecf1; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 予約システム デバッグ</h1>
+    
+    <div class="debug-section">
+        <h2>📋 クイックテスト</h2>
+        <button onclick="testSupabaseConnection()">Supabase接続テスト</button>
+        <button onclick="testReservationTable()">予約テーブル確認</button>
+        <button onclick="createTestReservation()">テスト予約作成</button>
+        <button onclick="listAllReservations()">全予約データ表示</button>
+        <button onclick="clearTestData()">テストデータ削除</button>
+    </div>
+
+    <div id="debugOutput"></div>
+
+    <!-- 設定ファイル読み込み -->
+    <script src="config/env.js"></script>
+    <script src="config/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+
+    <script>
+        let supabaseClient;
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const supabaseConfig = window.AppConfig.getSupabaseConfig();
+                supabaseClient = supabase.createClient(supabaseConfig.url, supabaseConfig.key);
+                
+                addOutput('初期化', '✅ Supabaseクライアント作成完了', 'success');
+                addOutput('設定', JSON.stringify(supabaseConfig, null, 2), 'info');
+            } catch (error) {
+                addOutput('初期化エラー', error.message, 'error');
+            }
+        });
+
+        function addOutput(title, content, type = 'info') {
+            const output = document.getElementById('debugOutput');
+            const section = document.createElement('div');
+            section.className = `debug-section ${type}`;
+            section.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>
+                <small>時刻: ${new Date().toLocaleTimeString()}</small>
+            `;
+            output.appendChild(section);
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testSupabaseConnection() {
+            try {
+                addOutput('接続テスト', '接続確認中...', 'info');
+                
+                // 基本接続テスト
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                addOutput('接続テスト', '✅ Supabase接続成功！', 'success');
+                addOutput('データ', `予約件数: ${data?.length || 0}件`, 'info');
+                
+            } catch (error) {
+                addOutput('接続エラー', `❌ ${error.message}`, 'error');
+                console.error('Supabase接続エラー:', error);
+            }
+        }
+
+        async function testReservationTable() {
+            try {
+                addOutput('テーブルテスト', 'reservationsテーブル確認中...', 'info');
+                
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                addOutput('テーブルテスト', '✅ テーブルアクセス成功', 'success');
+                addOutput('サンプルデータ', data, 'info');
+                
+            } catch (error) {
+                addOutput('テーブルエラー', `❌ ${error.message}`, 'error');
+            }
+        }
+
+        async function createTestReservation() {
+            try {
+                const testData = {
+                    name: 'デバッグテスト',
+                    phone: '090-0000-0000',
+                    datetime: '2025-12-10T14:00',
+                    course: '30分コース',
+                    email: 'debug@test.com',
+                    is_new_customer: true,
+                    referral_source: 'other'
+                };
+                
+                addOutput('テスト予約', 'テスト予約作成中...', 'info');
+                addOutput('送信データ', testData, 'info');
+                
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .insert([testData])
+                    .select();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                addOutput('テスト予約', '✅ テスト予約作成成功！', 'success');
+                addOutput('作成されたデータ', data, 'success');
+                
+            } catch (error) {
+                addOutput('テスト予約エラー', `❌ ${error.message}`, 'error');
+                console.error('テスト予約エラー詳細:', error);
+            }
+        }
+
+        async function listAllReservations() {
+            try {
+                addOutput('全データ表示', '全予約データ取得中...', 'info');
+                
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                addOutput('全データ表示', `✅ 取得成功: ${data.length}件`, 'success');
+                
+                if (data.length > 0) {
+                    addOutput('予約一覧', data, 'info');
+                } else {
+                    addOutput('予約一覧', '予約データが0件です', 'info');
+                }
+                
+            } catch (error) {
+                addOutput('全データエラー', `❌ ${error.message}`, 'error');
+            }
+        }
+
+        async function clearTestData() {
+            try {
+                addOutput('テストデータ削除', 'テストデータ削除中...', 'info');
+                
+                const { data, error } = await supabaseClient
+                    .from('reservations')
+                    .delete()
+                    .eq('name', 'デバッグテスト');
+                
+                if (error) {
+                    throw error;
+                }
+                
+                addOutput('テストデータ削除', '✅ テストデータ削除完了', 'success');
+                
+            } catch (error) {
+                addOutput('削除エラー', `❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ページ読み込み時に自動テスト
+        window.onload = async function() {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testSupabaseConnection();
+        };
+    </script>
+</body>
+</html>
