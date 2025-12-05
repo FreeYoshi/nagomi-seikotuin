@@ -298,15 +298,144 @@
         
         /* レスポンシブ */
         @media (max-width: 768px) {
+            /* ヘッダー */
+            .header {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            /* メインコンテンツ */
             .main-content {
                 flex-direction: column;
             }
+            
+            /* サイドバー */
             .sidebar {
                 width: 100%;
+                min-height: auto;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            .nav-menu {
+                display: flex;
+                padding: 0;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .nav-menu li {
+                border-bottom: none;
+                border-right: 1px solid #e9ecef;
+                flex-shrink: 0;
+            }
+            .nav-menu li:last-child {
+                border-right: none;
+            }
+            .nav-menu a {
+                padding: 12px 20px;
+                font-size: 14px;
+                white-space: nowrap;
+            }
+            
+            /* コンテンツエリア */
+            .content {
+                padding: 15px;
+            }
+            
+            /* テーブルをスクロール可能に */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                border-radius: 10px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            }
+            .admin-table {
+                min-width: 700px;
+            }
+            .admin-table th,
+            .admin-table td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+            
+            /* ボタンのサイズ調整 */
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            /* スケジュール管理 */
+            .schedule-controls {
+                padding: 15px;
+            }
+            .control-group {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            .control-group h4 {
+                font-size: 16px;
+                margin-bottom: 10px;
             }
             .control-row {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 10px;
+            }
+            .control-row input,
+            .control-row select {
+                width: 100%;
+                padding: 10px;
+                font-size: 16px;
+            }
+            
+            /* モーダル */
+            .modal-content {
+                width: 95%;
+                padding: 20px;
+                margin: 10% auto;
+            }
+            .modal-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                margin: 5px;
+            }
+            
+            /* ログインフォーム */
+            .login-form {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+        }
+        
+        /* さらに小さな画面用 */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 16px;
+            }
+            .nav-menu a {
+                padding: 10px 15px;
+                font-size: 12px;
+            }
+            .content {
+                padding: 10px;
+            }
+            .admin-table {
+                min-width: 600px;
+            }
+            .admin-table th,
+            .admin-table td {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            .btn {
+                padding: 4px 8px;
+                font-size: 11px;
             }
         }
     </style>
@@ -416,20 +545,22 @@
                             <span id="lastUpdateTime" style="color: #666; font-size: 12px;"></span>
                         </div>
                     </div>
-                    <table id="reservationTable" class="admin-table">
-                        <thead>
-                            <tr>
-                                <th><i class="fas fa-user"></i> お名前</th>
-                                <th><i class="fas fa-phone"></i> 電話番号</th>
-                                <th><i class="fas fa-calendar-check"></i> 予約日時</th>
-                                <th><i class="fas fa-list"></i> コース</th>
-                                <th><i class="fas fa-user-plus"></i> 顔客区分</th>
-                                <th><i class="fas fa-route"></i> 経緯</th>
-                                <th><i class="fas fa-cog"></i> 操作</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table id="reservationTable" class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-user"></i> お名前</th>
+                                    <th><i class="fas fa-phone"></i> 電話番号</th>
+                                    <th><i class="fas fa-calendar-check"></i> 予約日時</th>
+                                    <th><i class="fas fa-list"></i> コース</th>
+                                    <th><i class="fas fa-user-plus"></i> 顔客区分</th>
+                                    <th><i class="fas fa-route"></i> 経緯</th>
+                                    <th><i class="fas fa-cog"></i> 操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </section>
                 
                 <!-- スケジュール管理セクション -->
@@ -511,18 +642,20 @@
                         
                         <div class="control-group">
                             <h4><i class="fas fa-list"></i> 休業・営業履歴</h4>
-                            <table id="scheduleTable" class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>日付</th>
-                                        <th>開始時間</th>
-                                        <th>終了時間</th>
-                                        <th>状態</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                            <div class="table-responsive">
+                                <table id="scheduleTable" class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>日付</th>
+                                            <th>開始時間</th>
+                                            <th>終了時間</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -866,8 +999,26 @@
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     const section = link.dataset.section;
+                    
+                    // スマホでのアクティブ状態を即座に更新
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    
                     showSection(section);
                 });
+                
+                // タッチデバイスでのホバー効果を改善
+                link.addEventListener('touchstart', function() {
+                    this.style.backgroundColor = '#1a237e';
+                }, {passive: true});
+                
+                link.addEventListener('touchend', function() {
+                    setTimeout(() => {
+                        if (!this.classList.contains('active')) {
+                            this.style.backgroundColor = '';
+                        }
+                    }, 150);
+                }, {passive: true});
             });
             
 
