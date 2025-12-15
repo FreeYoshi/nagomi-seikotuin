@@ -13,7 +13,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta charset="UTF-8">
-    <title>和整骨院 - 完全予約制の整骨院</title>
+    <title>和み整骨院 - 完全予約制の整骨院</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -477,7 +477,7 @@
     <!-- ヘッダー -->
     <header class="header">
         <div class="header-content">
-            <div class="logo">和整骨院</div>
+            <div class="logo">和み整骨院</div>
             <nav>
                 <ul class="nav">
                     <li><a href="#intro">当院紹介</a></li>
@@ -492,8 +492,8 @@
     <!-- ヒーローセクション -->
     <section class="hero">
         <div class="logo-container">
-            <img src="images/logo.jpg" alt="和整骨院" class="main-logo">
-            <h1>和整骨院</h1>
+            <img src="images/logo.jpg" alt="和み整骨院" class="main-logo">
+            <h1>和み整骨院</h1>
         </div>
         <p>国家資格所有者による確かな技術で<br>「痛み・不調のない日々」を取り戻すお手伝いをしています</p>
         <div class="phone">
@@ -704,11 +704,13 @@
 
     <script>
         // 設定から値を取得
+        /* セキュリティ上の理由によりコメントアウト
         const supabaseConfig = window.AppConfig.getSupabaseConfig();
         const SUPABASE_URL = supabaseConfig.url;
         const SUPABASE_KEY = supabaseConfig.key;
         const tableName = window.AppConfig.tables.reservations;
         const scheduleTable = window.AppConfig.tables.scheduleOverrides;
+        */
         
         // 連絡先情報を動的に設定
         function updateContactInfo() {
@@ -737,6 +739,7 @@
             }
         }
 
+        /* セキュリティ上の理由によりSupabaseライブラリの読み込みをコメントアウト
         // Supabase JSライブラリ読込
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
@@ -745,7 +748,9 @@
             initApp();
         };
         document.head.appendChild(script);
+        */
 
+        /* セキュリティ上の理由によりデータベースアクセス機能をコメントアウト
         // スケジュール管理関数
         async function checkScheduleOverride(date, time = null) {
             try {
@@ -822,6 +827,7 @@
                 return null;
             }
         }
+        */
 
         // 日本の祝日判定機能
         function isJapaneseHoliday(date) {
@@ -1520,28 +1526,27 @@
                 }
             }
 
-            // EmailJS初期化（設定ファイルから取得）
-            const emailJSConfig = window.AppConfig.getEmailJSConfig();
+            /* セキュリティ上の理由によりEmailJS設定をコメントアウト
+            // EmailJS初期化（新しいAPI Key使用）
+            const emailJSConfig = {
+                publicKey: 'Bjgie8FTLGEHn3yFv',
+                serviceId: 'service_fsef42p',
+                templateId: 'template_4w72csd'
+            };
             
-            if (!emailJSConfig.publicKey || emailJSConfig.publicKey === 'YOUR_PUBLIC_KEY_HERE') {
-                window.AppLogger.error('EmailJS Public Keyが設定されていません！');
-                window.AppLogger.info('設定手順:');
-                window.AppLogger.info('1. https://dashboard.emailjs.com/admin/account にアクセス');
-                window.AppLogger.info('2. API Keys セクションの Public Key をコピー');
-                window.AppLogger.info('3. config/config.js または環境変数で設定');
-                
-                // メール機能を無効化
+            console.log('📧 EmailJS設定:', emailJSConfig);
+            
+            try {
+                emailjs.init(emailJSConfig.publicKey);
+                window.AppLogger.info('EmailJS初期化完了 - API Key:', emailJSConfig.publicKey);
+                window.emailJSEnabled = true;
+                console.log('✅ EmailJS初期化成功');
+            } catch (error) {
+                window.AppLogger.error('EmailJS初期化エラー:', error);
                 window.emailJSEnabled = false;
-            } else {
-                try {
-                    emailjs.init(emailJSConfig.publicKey);
-                    window.AppLogger.info('EmailJS初期化完了', emailJSConfig.publicKey);
-                    window.emailJSEnabled = true;
-                } catch (error) {
-                    window.AppLogger.error('EmailJS初期化エラー:', error);
-                    window.emailJSEnabled = false;
-                }
+                console.error('❌ EmailJS初期化失敗:', error);
             }
+            */
 
             // 予約フォーム送信
             document.getElementById('reserveForm').addEventListener('submit', async function(e) {
@@ -1582,6 +1587,7 @@
                     resultDiv.style.borderColor = '#f5c6cb';
                     return;
                 }
+                /* セキュリティ上の理由により予約登録機能をコメントアウト
                 // 予約登録
                 console.log('予約データ送信開始:', { name, phone, datetime, course, email, isNewCustomer, referralSource });
                 console.log('使用テーブル:', tableName);
@@ -1629,10 +1635,27 @@
                 }
                 
                 // ===============================
-                // メール送信機能（テスト時は無効化）
+                // メール送信機能
                 // ===============================
-                /*
-                emailjs.send('service_ppi835a', 'template_jcdlzq6', {
+                
+                // EmailJS設定確認
+                console.log('📧 EmailJS有効状態:', window.emailJSEnabled);
+                
+                if (!window.emailJSEnabled) {
+                    console.warn('⚠️ EmailJSが無効化されています');
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール設定確認中）';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.color = '#28a745';
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.borderColor = '#c3e6cb';
+                    document.getElementById('reserveForm').reset();
+                    document.getElementById('date').dispatchEvent(new Event('change'));
+                    return;
+                }
+                
+                /* セキュリティ上の理由によりメール送信機能をコメントアウト
+                emailjs.send('service_fsef42p', 'template_4w72csd', {
                     name: name,
                     phone: phone,
                     datetime: datetime,
@@ -1648,28 +1671,24 @@
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.borderColor = '#c3e6cb';
+                    document.getElementById('reserveForm').reset();
+                    // 時間帯再描画
+                    document.getElementById('date').dispatchEvent(new Event('change'));
                 }, function(error) {
                     console.error('メール送信エラー:', error);
+                    console.error('使用したサービスID:', serviceId);
+                    console.error('使用したテンプレートID:', templateId);
                     const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small>`;
+                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small><br><small>Service ID: ${serviceId}</small><br><small>Template ID: ${templateId}</small><br><small>EmailJSダッシュボードで設定を確認してください: <a href="https://dashboard.emailjs.com/admin" target="_blank">https://dashboard.emailjs.com/admin</a></small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#856404';
                     resultDiv.style.background = '#fff3cd';
                     resultDiv.style.borderColor = '#ffeaa7';
+                    document.getElementById('reserveForm').reset();
+                    // 時間帯再描画
+                    document.getElementById('date').dispatchEvent(new Event('change'));
                 });
                 */
-                
-                // テスト用：メール送信なしで成功メッセージ表示
-                console.log('📧 メール送信はテスト用にスキップされました');
-                const resultDiv = document.getElementById('result');
-                resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（テスト用：メール送信無効）';
-                resultDiv.style.display = 'block';
-                resultDiv.style.color = '#28a745';
-                resultDiv.style.background = '#d4edda';
-                resultDiv.style.borderColor = '#c3e6cb';
-                document.getElementById('reserveForm').reset();
-                // 時間帯再描画
-                document.getElementById('date').dispatchEvent(new Event('change'));
             });
             
             // 時間選択時のイベントリスナー追加
@@ -1701,8 +1720,6 @@
                     disableCourseAndSubmit('時間を選択してください');
                 }
             });
-
-
 
 
             // 初期表示

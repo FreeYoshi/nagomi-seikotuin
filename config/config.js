@@ -17,6 +17,7 @@ window.AppConfig = {
         return window[key] || defaultValue;
     },
     
+    /* セキュリティ上の理由によりコメントアウト
     // Supabase設定（開発・本番で同じキー）
     getSupabaseConfig: () => {
         return {
@@ -24,22 +25,27 @@ window.AppConfig = {
             key: window.AppConfig.getEnv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YmpuaHR5b2d4aXd2c2xkeGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0Nzk3MDQsImV4cCI6MjA4MDA1NTcwNH0.6IwN-RWr3imbRotjb3CG4OYYssP50CBUuIFE-xndjd4')
         };
     },
+    */
     
+    /* セキュリティ上の理由によりコメントアウト
     // EmailJS設定
     getEmailJSConfig: () => {
         return {
-            publicKey: window.AppConfig.getEnv('EMAILJS_PUBLIC_KEY', 'KyHtLCaZ6C6XEpcv0'),
-            serviceId: window.AppConfig.getEnv('EMAILJS_SERVICE_ID', 'service_ppi835a'),
-            templateId: window.AppConfig.getEnv('EMAILJS_TEMPLATE_ID', 'template_jcdlzq6')
+            publicKey: window.AppConfig.getEnv('EMAILJS_PUBLIC_KEY', 'Bjgie8FTLGEHn3yFv'),
+            serviceId: window.AppConfig.getEnv('EMAILJS_SERVICE_ID', 'service_fsef42p'),
+            templateId: window.AppConfig.getEnv('EMAILJS_TEMPLATE_ID', 'template_4w72csd')
         };
     },
+    */
     
+    /* セキュリティ上の理由によりコメントアウト
     // テーブル名
     tables: {
         reservations: 'reservations',
         adminUsers: 'admin_users',
         scheduleOverrides: 'schedule_overrides'
     },
+    */
     
     // 営業時間設定
     businessHours: {
