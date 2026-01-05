@@ -24,8 +24,9 @@ window.AppConfig = {
     // Supabase設定（本番環境では環境変数から、開発環境ではデフォルト値から取得）
     getSupabaseConfig: () => {
         try {
-            const url = window.AppConfig.getEnv('SUPABASE_URL') || 'https://oybjnhtyogxiwvsldxhj.supabase.co';
-            const key = window.AppConfig.getEnv('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YmpuaHR5b2d4aXd2c2xkeGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0Nzk3MDQsImV4cCI6MjA4MDA1NTcwNH0.6IwN-RWr3imbRotjb3CG4OYYssP50CBUuIFE-xndjd4';
+            // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE PROJECT CREDENTIALS ⚠️
+            const url = window.AppConfig.getEnv('SUPABASE_URL') || 'https://your-project-id.supabase.co';
+            const key = window.AppConfig.getEnv('SUPABASE_ANON_KEY') || 'your-anon-key-here';
             
             if (!url || !key) {
                 throw new Error(`Supabase設定が不完全です: URL=${!!url}, KEY=${!!key}`);
@@ -46,9 +47,9 @@ window.AppConfig = {
     // EmailJS設定（本番環境では環境変数から、開発環境ではデフォルト値から取得）
     getEmailJSConfig: () => {
         return {
-            publicKey: window.AppConfig.getEnv('EMAILJS_PUBLIC_KEY') || 'Bjgie8FTLGEHn3yFv',
-            serviceId: window.AppConfig.getEnv('EMAILJS_SERVICE_ID') || 'service_fsef42p',
-            templateId: window.AppConfig.getEnv('EMAILJS_TEMPLATE_ID') || 'template_4w72csd'
+            publicKey: window.AppConfig.getEnv('EMAILJS_PUBLIC_KEY') || 'KyHtLCaZ6C6XEpcv0',
+            serviceId: window.AppConfig.getEnv('EMAILJS_SERVICE_ID') || 'service_ppi835a',
+            templateId: window.AppConfig.getEnv('EMAILJS_TEMPLATE_ID') || 'template_jcdlzq6'
         };
     },
     
