@@ -715,7 +715,7 @@
         const todayStart = normalizeToStartOfDay(new Date());
         window.emailJSEnabled = false;
 
-        const SUPABASE_PLACEHOLDER_HOSTS = ['your-project-id.supabase.co', 'oybjnhtyogxiwvsldxhj.supabase.co'];
+        const SUPABASE_PLACEHOLDER_HOSTS = ['your-project-id.supabase.co'];
         const isPlaceholderUrl = !SUPABASE_URL || SUPABASE_PLACEHOLDER_HOSTS.some(host => SUPABASE_URL.includes(host));
         const isPlaceholderKey = !SUPABASE_KEY || SUPABASE_KEY.includes('your-anon-key');
         const useLocalFallbackStore = isPlaceholderUrl || isPlaceholderKey;
@@ -732,9 +732,6 @@
             supabaseUrl: SUPABASE_URL
         });
 
-        const localStorageNoticeHtml = useLocalFallbackStore
-            ? '<br><small>※現在はローカル保存モードです。CONFIGURATION_SETUP.md を参照して本番用のSupabase接続情報を設定してください。</small>'
-            : '';
 
         function readLocalData(key) {
             try {
@@ -1215,24 +1212,6 @@
                 }
             }
 
-            if (useLocalFallbackStore) {
-                const formContainer = document.querySelector('.form-container');
-                if (formContainer && !document.getElementById('local-mode-alert')) {
-                    const warning = document.createElement('div');
-                    warning.id = 'local-mode-alert';
-                    warning.className = 'business-hours';
-                    warning.style.background = '#fff3cd';
-                    warning.style.borderLeftColor = '#ff9800';
-                    warning.style.marginBottom = '20px';
-                    warning.innerHTML = `
-                        <strong><i class="fas fa-triangle-exclamation"></i> テストモード</strong><br>
-                        現在、Supabaseへの接続情報が設定されていないため、予約データはブラウザ内にのみ保存されます。<br>
-                        本番運用前に CONFIGURATION_SETUP.md を参照し、接続情報を設定してください。
-                    `;
-                    formContainer.insertBefore(warning, formContainer.firstChild);
-                }
-            }
-            
             // flatpickrカレンダーUI初期化
             window.calendar = flatpickr('#date', {
                 locale: flatpickr.l10ns.ja,
@@ -1815,9 +1794,9 @@
                     const resultDiv = document.getElementById('result');
                     const isNetworkError = typeof error.message === 'string' && error.message.toLowerCase().includes('failed to fetch');
                     if (isNetworkError) {
-                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約データベースに接続できませんでした。<br><small>ネットワーク環境と Supabase の設定（CONFIGURATION_SETUP.md 参照）をご確認ください。</small>${localStorageNoticeHtml}`;
+                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約データベースに接続できませんでした。<br><small>ネットワーク環境と Supabase の設定（CONFIGURATION_SETUP.md 参照）をご確認ください。</small>`;
                     } else {
-                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約登録に失敗しました。<br><small>エラー: ${error.message}</small>${localStorageNoticeHtml}`;
+                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約登録に失敗しました。<br><small>エラー: ${error.message}</small>`;
                     }
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#dc3545';
@@ -1846,7 +1825,7 @@
 
                 if (!window.emailJSEnabled) {
                     console.warn('⚠️ EmailJSが無効のため、メール送信をスキップします');
-                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール通知は現在停止中です）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール通知は現在停止中です）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
@@ -1872,14 +1851,14 @@
                         templateParams
                     );
                     console.log('メール送信成功:', emailResponse);
-                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.borderColor = '#c3e6cb';
                 } catch (emailError) {
                     console.error('メール送信エラー:', emailError);
-                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${emailError.text || emailError.message || '不明なエラー'}</small><br><small>Service ID: ${emailJSConfig.serviceId}</small><br><small>Template ID: ${emailJSConfig.templateId}</small><br><small>EmailJSダッシュボードで設定を確認してください: <a href=\"https://dashboard.emailjs.com/admin\" target=\"_blank\">https://dashboard.emailjs.com/admin</a></small><br><small>お急ぎの場合やメールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
+                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${emailError.text || emailError.message || '不明なエラー'}</small><br><small>Service ID: ${emailJSConfig.serviceId}</small><br><small>Template ID: ${emailJSConfig.templateId}</small><br><small>EmailJSダッシュボードで設定を確認してください: <a href=\"https://dashboard.emailjs.com/admin\" target=\"_blank\">https://dashboard.emailjs.com/admin</a></small><br><small>お急ぎの場合やメールが届かない場合は ${contactPhone} までお電話ください。</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#856404';
                     resultDiv.style.background = '#fff3cd';

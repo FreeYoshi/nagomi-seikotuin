@@ -24,9 +24,8 @@ window.AppConfig = {
     // Supabase設定（本番環境では環境変数から、開発環境ではデフォルト値から取得）
     getSupabaseConfig: () => {
         try {
-            // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE PROJECT CREDENTIALS ⚠️
-            const url = window.AppConfig.getEnv('SUPABASE_URL') || 'https://your-project-id.supabase.co';
-            const key = window.AppConfig.getEnv('SUPABASE_ANON_KEY') || 'your-anon-key-here';
+            const url = window.AppConfig.getEnv('SUPABASE_URL') || 'https://oybjnhtyogxiwvsldxhj.supabase.co';
+            const key = window.AppConfig.getEnv('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YmpuaHR5b2d4aXd2c2xkeGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0Nzk3MDQsImV4cCI6MjA4MDA1NTcwNH0.6IwN-RWr3imbRotjb3CG4OYYssP50CBUuIFE-xndjd4';
             
             if (!url || !key) {
                 throw new Error(`Supabase設定が不完全です: URL=${!!url}, KEY=${!!key}`);
