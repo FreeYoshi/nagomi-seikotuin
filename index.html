@@ -1823,9 +1823,22 @@
                     document.getElementById('date').dispatchEvent(new Event('change'));
                 };
 
+                // 予約日時を分かりやすくフォーマット
+                const formatReservationDateTime = (dateStr, timeStr) => {
+                    const dt = new Date(`${dateStr}T${timeStr}`);
+                    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                    const dayName = dayNames[dt.getDay()];
+                    const month = dt.getMonth() + 1;
+                    const day = dt.getDate();
+                    const hour = dt.getHours();
+                    const minute = String(dt.getMinutes()).padStart(2, '0');
+                    return `${month}月${day}日(${dayName}) ${hour}:${minute}`;
+                };
+                const formattedDateTime = formatReservationDateTime(date, time);
+
                 if (!window.emailJSEnabled) {
                     console.warn('⚠️ EmailJSが無効のため、メール送信をスキップします');
-                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール通知は現在停止中です）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール通知は現在停止中です）<br><strong style="font-size: 16px; color: #1a237e;">予約日時: ${formattedDateTime}</strong><br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
@@ -1851,7 +1864,7 @@
                         templateParams
                     );
                     console.log('メール送信成功:', emailResponse);
-                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！<br><strong style="font-size: 16px; color: #1a237e;">予約日時: ${formattedDateTime}</strong><br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
