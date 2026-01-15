@@ -709,6 +709,130 @@
         const SUPABASE_KEY = supabaseConfig.key;
         const tableName = window.AppConfig.tables.reservations;
         const scheduleTable = window.AppConfig.tables.scheduleOverrides;
+        const emailJSConfig = window.AppConfig.getEmailJSConfig();
+        const clinicEmail = window.AppConfig.contact?.email || 'nagomi.y.c.j.t@gmail.com';
+        const contactPhone = window.AppConfig.contact?.phone || '0985-73-9884';
+        const todayStart = normalizeToStartOfDay(new Date());
+        window.emailJSEnabled = false;
+
+        const SUPABASE_PLACEHOLDER_HOSTS = ['your-project-id.supabase.co', 'oybjnhtyogxiwvsldxhj.supabase.co'];
+        const isPlaceholderUrl = !SUPABASE_URL || SUPABASE_PLACEHOLDER_HOSTS.some(host => SUPABASE_URL.includes(host));
+        const isPlaceholderKey = !SUPABASE_KEY || SUPABASE_KEY.includes('your-anon-key');
+        const useLocalFallbackStore = isPlaceholderUrl || isPlaceholderKey;
+        const LOCAL_STORAGE_KEYS = {
+            reservations: 'nagomi_reservations_local_cache',
+            scheduleOverrides: 'nagomi_schedule_local_cache'
+        };
+        let reservationCache = [];
+        let reservationCacheFetchedAt = 0;
+        const RESERVATION_CACHE_TTL = 60 * 1000; // 1分キャッシュ
+
+        window.AppState = Object.assign({}, window.AppState, {
+            dataSource: useLocalFallbackStore ? 'local-storage' : 'supabase',
+            supabaseUrl: SUPABASE_URL
+        });
+
+        const localStorageNoticeHtml = useLocalFallbackStore
+            ? '<br><small>※現在はローカル保存モードです。CONFIGURATION_SETUP.md を参照して本番用のSupabase接続情報を設定してください。</small>'
+            : '';
+
+        function readLocalData(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : [];
+            } catch (error) {
+                console.error('ローカルデータの読み込みに失敗しました:', error);
+                return [];
+            }
+        }
+
+        function writeLocalData(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (error) {
+                console.error('ローカルデータの保存に失敗しました:', error);
+            }
+        }
+
+        async function querySupabase(description, executor, fallbackData = null) {
+            if (!window.supabase) {
+                return { data: fallbackData, error: new Error('Supabase client is not available') };
+            }
+            try {
+                const result = await executor();
+                if (result?.error) {
+                    console.error(`Supabase応答エラー (${description})`, result.error);
+                }
+                return {
+                    data: result?.data ?? fallbackData,
+                    error: result?.error ?? null
+                };
+            } catch (error) {
+                console.error(`Supabase通信エラー (${description})`, error);
+                return { data: fallbackData, error };
+            }
+        }
+
+        async function fetchReservationsFromSource(selectClause = 'datetime, course') {
+            if (useLocalFallbackStore) {
+                const localData = readLocalData(LOCAL_STORAGE_KEYS.reservations);
+                return Array.isArray(localData) ? localData : [];
+            }
+            const { data } = await querySupabase('予約データ取得', () =>
+                window.supabase.from(tableName).select(selectClause)
+            , []);
+            return Array.isArray(data) ? data : [];
+        }
+
+        async function getReservationData(forceRefresh = false) {
+            const now = Date.now();
+            if (!forceRefresh && reservationCache.length && (now - reservationCacheFetchedAt) < RESERVATION_CACHE_TTL) {
+                return reservationCache;
+            }
+            const data = await fetchReservationsFromSource('datetime, course');
+            reservationCache = Array.isArray(data) ? data : [];
+            reservationCacheFetchedAt = now;
+            return reservationCache;
+        }
+
+        async function fetchScheduleOverrides(date, status = null) {
+            if (useLocalFallbackStore) {
+                const overrides = readLocalData(LOCAL_STORAGE_KEYS.scheduleOverrides);
+                return overrides.filter(entry => entry.date === date && (!status || entry.status === status));
+            }
+            const { data } = await querySupabase('スケジュール設定取得', () => {
+                let query = window.supabase.from(scheduleTable).select('*').eq('date', date);
+                if (status) {
+                    query = query.eq('status', status);
+                }
+                return query;
+            }, []);
+            return Array.isArray(data) ? data : [];
+        }
+
+        async function insertReservationRecord(record) {
+            if (useLocalFallbackStore) {
+                const reservations = readLocalData(LOCAL_STORAGE_KEYS.reservations);
+                const storedRecord = Object.assign({ id: `local-${Date.now()}` }, record);
+                reservations.push(storedRecord);
+                writeLocalData(LOCAL_STORAGE_KEYS.reservations, reservations);
+                return { data: [storedRecord], error: null, source: 'local' };
+            }
+            return await querySupabase('予約登録', () =>
+                window.supabase.from(tableName).insert([record]).select()
+            );
+        }
+
+        async function fetchReservationsByDateTime(datetime) {
+            if (useLocalFallbackStore) {
+                const reservations = await getReservationData();
+                return reservations.filter(entry => entry.datetime === datetime);
+            }
+            const { data } = await querySupabase('予約重複確認', () =>
+                window.supabase.from(tableName).select('*').eq('datetime', datetime)
+            , []);
+            return Array.isArray(data) ? data : [];
+        }
         
         // 連絡先情報を動的に設定
         function updateContactInfo() {
@@ -737,95 +861,134 @@
             }
         }
 
-        /* セキュリティ上の理由によりSupabaseライブラリの読み込みをコメントアウト
-        // Supabase JSライブラリ読込
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
-        script.onload = () => {
-            window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            initApp();
-        };
-        document.head.appendChild(script);
-        */
+        function initEmailJS() {
+            if (window.emailJSEnabled) {
+                return;
+            }
+            if (typeof emailjs === 'undefined') {
+                console.error('EmailJS SDKが読み込まれていません');
+                return;
+            }
+            if (!emailJSConfig.publicKey || !emailJSConfig.serviceId || !emailJSConfig.templateId) {
+                console.warn('EmailJS設定が不完全なため初期化できません');
+                return;
+            }
+            try {
+                emailjs.init(emailJSConfig.publicKey);
+                window.emailJSEnabled = true;
+                window.AppLogger?.info('EmailJS初期化完了', {
+                    serviceId: emailJSConfig.serviceId,
+                    templateId: emailJSConfig.templateId
+                });
+            } catch (error) {
+                window.emailJSEnabled = false;
+                console.error('EmailJS初期化に失敗しました:', error);
+            }
+        }
+        initEmailJS();
 
-        /* セキュリティ上の理由によりデータベースアクセス機能をコメントアウト
+        // Supabase JSライブラリを読み込み、初期化後にアプリを起動
+        function bootstrapSupabase() {
+            if (useLocalFallbackStore) {
+                console.warn('Supabase設定が見つからないため、ローカルストレージモードで動作します。CONFIGURATION_SETUP.md を参照して本番用の接続情報を設定してください。');
+                initApp();
+                return;
+            }
+
+            if (window.supabase) {
+                initApp();
+                return;
+            }
+
+            if (document.querySelector('script[data-supabase-sdk]')) {
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
+            script.async = true;
+            script.defer = true;
+            script.dataset.supabaseSdk = 'true';
+            script.onload = () => {
+                try {
+                    window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    initApp();
+                } catch (error) {
+                    console.error('Supabase初期化に失敗しました:', error);
+                }
+            };
+            script.onerror = (error) => {
+                console.error('Supabase SDKの読み込みに失敗しました:', error);
+            };
+            document.head.appendChild(script);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootstrapSupabase);
+        } else {
+            bootstrapSupabase();
+        }
+
         // スケジュール管理関数
         async function checkScheduleOverride(date, time = null) {
             try {
-                const { data, error } = await window.supabase
-                    .from(scheduleTable)
-                    .select('*')
-                    .eq('date', date);
-                
-                if (error) {
-                    console.error('スケジュール確認エラー:', error);
-                    return null;
-                }
-                
+                const data = await fetchScheduleOverrides(date);
                 if (!data || data.length === 0) {
                     return null; // 設定なし = 通常営業
                 }
-                
+
                 // 時間指定がある場合の確認
                 if (time) {
                     console.log(`スケジュール確認: ${date} ${time} (休業かどうかチェック)`, data);
-                    
+
                     // 1. 直接時間マッチ（旧形式との互換性）
                     const directMatch = data.find(d => d.time === time);
                     if (directMatch) {
                         console.log(`直接マッチ: ${time} → ${directMatch.status}`);
                         return directMatch.status;
                     }
-                    
+
                     // 2. 時間範囲内チェック（新形式）
                     for (const schedule of data) {
                         if (schedule.start_time && schedule.end_time) {
-                            // 時間文字列を正規化（HH:MM形式に統一）
                             const normalizeTime = (timeStr) => {
                                 if (!timeStr) return '';
-                                // HH:MM:SS形式をHH:MM形式に変換
                                 return timeStr.slice(0, 5);
                             };
-                            
+
                             const normalizedTime = normalizeTime(time);
                             const normalizedStartTime = normalizeTime(schedule.start_time);
                             const normalizedEndTime = normalizeTime(schedule.end_time);
-                            
+
                             console.log(`スケジュール確認: ${normalizedTime} vs ${normalizedStartTime}-${normalizedEndTime} (${schedule.status})`);
-                            
-                            // 開始時間以上、終了時間未満（開始時間は休業、終了時間は営業可能）
+
                             if (normalizedTime >= normalizedStartTime && normalizedTime < normalizedEndTime) {
                                 console.log(`範囲マッチ: ${normalizedTime} は ${normalizedStartTime}〜${normalizedEndTime}の範囲内 → ${schedule.status}`);
                                 return schedule.status;
                             }
                         }
                     }
-                    
+
                     console.log(`マッチなし: ${time}`);
                 }
-                
+
                 // 終日設定があるかチェック（時間範囲設定も含む）
-                if (data && data.length > 0) {
-                    // 時間範囲設定がある場合は営業日として扱う
-                    const hasTimeRange = data.some(d => d.start_time && d.end_time);
-                    if (hasTimeRange) {
-                        return 'open';
-                    }
-                    
-                    // 終日設定をチェック
-                    const dayMatch = data.find(d => d.time === null && !d.start_time && !d.end_time);
-                    if (dayMatch) {
-                        return dayMatch.status;
-                    }
+                const hasTimeRange = data.some(d => d.start_time && d.end_time);
+                if (hasTimeRange) {
+                    return 'open';
                 }
-                
-                return null; // 設定なし
+
+                const dayMatch = data.find(d => d.time === null && !d.start_time && !d.end_time);
+                if (dayMatch) {
+                    return dayMatch.status;
+                }
+
+                return null;
             } catch (error) {
                 console.error('スケジュール確認エラー:', error);
                 return null;
             }
         }
-        */
 
         // 日本の祝日判定機能
         function isJapaneseHoliday(date) {
@@ -1024,6 +1187,21 @@
             return '';
         }
 
+        // 日付比較ヘルパー
+        function normalizeToStartOfDay(input) {
+            if (!input) return null;
+            const date = input instanceof Date ? new Date(input.getTime()) : new Date(input);
+            if (isNaN(date)) return null;
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function isPastDate(input) {
+            const normalized = normalizeToStartOfDay(input);
+            if (!normalized) return false;
+            return normalized < todayStart;
+        }
+
         function initApp() {
             // 連絡先情報を更新
             updateContactInfo();
@@ -1036,15 +1214,40 @@
                     referralSelect.value = detectedSource;
                 }
             }
+
+            if (useLocalFallbackStore) {
+                const formContainer = document.querySelector('.form-container');
+                if (formContainer && !document.getElementById('local-mode-alert')) {
+                    const warning = document.createElement('div');
+                    warning.id = 'local-mode-alert';
+                    warning.className = 'business-hours';
+                    warning.style.background = '#fff3cd';
+                    warning.style.borderLeftColor = '#ff9800';
+                    warning.style.marginBottom = '20px';
+                    warning.innerHTML = `
+                        <strong><i class="fas fa-triangle-exclamation"></i> テストモード</strong><br>
+                        現在、Supabaseへの接続情報が設定されていないため、予約データはブラウザ内にのみ保存されます。<br>
+                        本番運用前に CONFIGURATION_SETUP.md を参照し、接続情報を設定してください。
+                    `;
+                    formContainer.insertBefore(warning, formContainer.firstChild);
+                }
+            }
             
             // flatpickrカレンダーUI初期化
             window.calendar = flatpickr('#date', {
                 locale: flatpickr.l10ns.ja,
-                minDate: 'today',
+                minDate: todayStart,
                 dateFormat: 'Y-m-d',
                 disable: [
                     // 日曜日と祝日を無効化（管理者設定で上書き可能）
                     function(date) {
+                        const normalized = normalizeToStartOfDay(date);
+                        if (!normalized) {
+                            return true;
+                        }
+                        if (normalized < todayStart) {
+                            return true;
+                        }
                         return date.getDay() === 0 || isJapaneseHoliday(date);
                     }
                 ],
@@ -1057,6 +1260,14 @@
                     const dateStr = `${year}-${month}-${date}`;
                     const day = dayElem.dateObj.getDay();
                     const holidayName = isJapaneseHoliday(dayElem.dateObj);
+                    const normalizedDate = normalizeToStartOfDay(dayElem.dateObj);
+                    if (!normalizedDate || normalizedDate < todayStart) {
+                        dayElem.innerHTML += '<span style="color:red;font-size:1.2em;">×</span>';
+                        dayElem.style.background = '#ffebee';
+                        dayElem.style.pointerEvents = 'none';
+                        dayElem.classList.add('flatpickr-disabled');
+                        return;
+                    }
                     
                     console.log(`カレンダー表示処理: ${dateStr} (曜日:${day}, 祝日:${holidayName || 'なし'})`);
                     
@@ -1138,8 +1349,7 @@
                         }
                     }
                     
-                    const { data: reserved } = await window.supabase.from(tableName).select('datetime');
-                    const reservedArr = Array.isArray(reserved) ? reserved : [];
+                    const reservedArr = await getReservationData();
                     let availableCount = 0;
                     
                     for (const t of times) {
@@ -1234,9 +1444,16 @@
                 }
                 // ローカル日付でDateオブジェクトを作成（UTCズレを防ぐ）
                 const dateObj = new Date(dateStr + 'T00:00:00');
+                const timeSelect = document.getElementById('time');
+                if (isPastDate(dateObj)) {
+                    timeSelect.innerHTML = '<option value="">過去の日付は選択できません</option>';
+                    timeSelect.disabled = true;
+                    disableCourseAndSubmit('過去の日付は選択できません');
+                    this.value = '';
+                    return;
+                }
                 const day = dateObj.getDay();
                 const holidayName = isJapaneseHoliday(dateObj);
-                const timeSelect = document.getElementById('time');
                 // ローディング表示＆選択不可
                 timeSelect.innerHTML = '<option value="">読み込み中...</option>';
                 timeSelect.disabled = true;
@@ -1270,11 +1487,7 @@
                     if (dayOverride === 'open') {
                         console.log(`${dayType}営業設定あり: ${dateStr} -> 営業時間を設定`);
                         // 管理者が設定した営業時間を確認（詳細な時間設定があるかチェック）
-                        const { data: scheduleData } = await window.supabase
-                            .from(scheduleTable)
-                            .select('*')
-                            .eq('date', dateStr)
-                            .eq('status', 'open');
+                        const scheduleData = await fetchScheduleOverrides(dateStr, 'open');
                         
                         if (scheduleData && scheduleData.length > 0) {
                             // 管理者が詳細時間を設定している場合
@@ -1339,7 +1552,7 @@
                     }
                 }
                 // 予約一覧（コースも取得）
-                const { data: reserved } = await window.supabase.from(tableName).select('datetime, course');
+                const reserved = await getReservationData();
                 // 予約済み枠を除外するロジック（YYYY-MM-DDTHH:MM 形式で統一）
                 const reservedSet = new Set();
                 (reserved||[]).forEach(r => {
@@ -1404,8 +1617,7 @@
 
             // 予約済み時間を取得し、選択不可にする
             async function updateDisabledTimes() {
-                const { data, error } = await window.supabase.from(tableName).select('datetime');
-                if (error) return;
+                await getReservationData(true);
                 // 予約済み時間の取得のみ（UI反映はdate/timeのchangeイベントで実施）
             }
             
@@ -1486,11 +1698,7 @@
                         const dayOverride = await checkScheduleOverride(dateStr);
                         if (dayOverride === 'open') {
                             // 管理者設定の営業時間を取得
-                            const { data: scheduleData } = await window.supabase
-                                .from(scheduleTable)
-                                .select('*')
-                                .eq('date', dateStr)
-                                .eq('status', 'open');
+                            const scheduleData = await fetchScheduleOverrides(dateStr, 'open');
                             
                             if (scheduleData && scheduleData.length > 0) {
                                 const scheduleItem = scheduleData[0];
@@ -1559,13 +1767,13 @@
                 const referralSource = document.getElementById('referral_source').value;
                 const datetime = `${date}T${time}`;
                 // 排他制御: 予約済みと休業時間のチェック
-                const [existsResult, scheduleResult] = await Promise.all([
-                    window.supabase.from(tableName).select('*').eq('datetime', datetime),
+                const [existingReservations, scheduleResult] = await Promise.all([
+                    fetchReservationsByDateTime(datetime),
                     checkScheduleOverride(date, time)
                 ]);
                 
                 // 1. 予約済みチェック
-                if (existsResult.data && existsResult.data.length > 0) {
+                if (existingReservations && existingReservations.length > 0) {
                     const resultDiv = document.getElementById('result');
                     resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> その時間はすでに予約が入っています。別の時間を選択してください。';
                     resultDiv.style.display = 'block';
@@ -1585,13 +1793,12 @@
                     resultDiv.style.borderColor = '#f5c6cb';
                     return;
                 }
-                /* セキュリティ上の理由により予約登録機能をコメントアウト
                 // 予約登録
                 console.log('予約データ送信開始:', { name, phone, datetime, course, email, isNewCustomer, referralSource });
                 console.log('使用テーブル:', tableName);
                 console.log('Supabaseクライアント:', !!window.supabase);
                 
-                const { data, error } = await window.supabase.from(tableName).insert([{ 
+                const { data, error, source } = await insertReservationRecord({ 
                     name, 
                     phone, 
                     datetime, 
@@ -1599,14 +1806,19 @@
                     email,
                     is_new_customer: isNewCustomer,
                     referral_source: referralSource
-                }]).select();
+                });
                 
-                console.log('予約登録結果:', { data, error });
+                console.log('予約登録結果:', { data, error, source });
                 
                 if (error) {
                     console.error('❌ 予約登録エラー詳細:', error);
                     const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約登録に失敗しました。<br><small>エラー: ${error.message}</small>`;
+                    const isNetworkError = typeof error.message === 'string' && error.message.toLowerCase().includes('failed to fetch');
+                    if (isNetworkError) {
+                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約データベースに接続できませんでした。<br><small>ネットワーク環境と Supabase の設定（CONFIGURATION_SETUP.md 参照）をご確認ください。</small>${localStorageNoticeHtml}`;
+                    } else {
+                        resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> 予約登録に失敗しました。<br><small>エラー: ${error.message}</small>${localStorageNoticeHtml}`;
+                    }
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#dc3545';
                     resultDiv.style.background = '#f8d7da';
@@ -1617,76 +1829,64 @@
                 console.log('✅ 予約登録成功:', data);
                 // EmailJSでGmail通知（お店・本人両方に送信）
                 console.log('メール送信開始:', { name, phone, datetime, course, email });
-                
+
+                const resultDiv = document.getElementById('result');
+                const resetAndRefreshUI = async () => {
+                    document.getElementById('reserveForm').reset();
+                    if (typeof renderReservations === 'function') {
+                        try {
+                            await renderReservations();
+                        } catch (renderError) {
+                            console.warn('予約一覧の再描画に失敗しました:', renderError);
+                        }
+                    }
+                    await getReservationData(true);
+                    document.getElementById('date').dispatchEvent(new Event('change'));
+                };
+
                 if (!window.emailJSEnabled) {
                     console.warn('⚠️ EmailJSが無効のため、メール送信をスキップします');
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール設定が必要です）';
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール通知は現在停止中です）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.borderColor = '#c3e6cb';
-                    document.getElementById('reserveForm').reset();
-                    await renderReservations();
-                    document.getElementById('date').dispatchEvent(new Event('change'));
+                    await resetAndRefreshUI();
                     return;
                 }
-                
-                // ===============================
-                // メール送信機能
-                // ===============================
-                
-                // EmailJS設定確認
-                console.log('📧 EmailJS有効状態:', window.emailJSEnabled);
-                
-                if (!window.emailJSEnabled) {
-                    console.warn('⚠️ EmailJSが無効化されています');
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。（メール設定確認中）';
-                    resultDiv.style.display = 'block';
-                    resultDiv.style.color = '#28a745';
-                    resultDiv.style.background = '#d4edda';
-                    resultDiv.style.borderColor = '#c3e6cb';
-                    document.getElementById('reserveForm').reset();
-                    document.getElementById('date').dispatchEvent(new Event('change'));
-                    return;
-                }
-                
-                /* セキュリティ上の理由によりメール送信機能をコメントアウト
-                emailjs.send('service_fsef42p', 'template_4w72csd', {
-                    name: name,
-                    phone: phone,
-                    datetime: datetime,
-                    course: course,
-                    to_email: 'nagomi.y.c.j.t@gmail.com',
+
+                const templateParams = {
+                    name,
+                    phone,
+                    datetime: datetime.replace('T', ' '),
+                    course,
+                    to_email: clinicEmail,
                     user_email: email,
                     message: `新しい予約が入りました。\n\n【予約内容】\nお名前: ${name}\n電話番号: ${phone}\n予約日時: ${datetime.replace('T', ' ')}\nコース: ${course}\nメール: ${email}`
-                }).then(function(response) {
-                    console.log('メール送信成功:', response);
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）';
+                };
+
+                try {
+                    const emailResponse = await emailjs.send(
+                        emailJSConfig.serviceId,
+                        emailJSConfig.templateId,
+                        templateParams
+                    );
+                    console.log('メール送信成功:', emailResponse);
+                    resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ご予約を受け付けました。ありがとうございます！（メール通知済み）<br><small>万一確認メールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#28a745';
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.borderColor = '#c3e6cb';
-                    document.getElementById('reserveForm').reset();
-                    // 時間帯再描画
-                    document.getElementById('date').dispatchEvent(new Event('change'));
-                }, function(error) {
-                    console.error('メール送信エラー:', error);
-                    console.error('使用したサービスID:', serviceId);
-                    console.error('使用したテンプレートID:', templateId);
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${error.text || error.message || '不明なエラー'}</small><br><small>Service ID: ${serviceId}</small><br><small>Template ID: ${templateId}</small><br><small>EmailJSダッシュボードで設定を確認してください: <a href="https://dashboard.emailjs.com/admin" target="_blank">https://dashboard.emailjs.com/admin</a></small>`;
+                } catch (emailError) {
+                    console.error('メール送信エラー:', emailError);
+                    resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ご予約は完了しましたが、メール通知に失敗しました。<br><small>エラー: ${emailError.text || emailError.message || '不明なエラー'}</small><br><small>Service ID: ${emailJSConfig.serviceId}</small><br><small>Template ID: ${emailJSConfig.templateId}</small><br><small>EmailJSダッシュボードで設定を確認してください: <a href=\"https://dashboard.emailjs.com/admin\" target=\"_blank\">https://dashboard.emailjs.com/admin</a></small><br><small>お急ぎの場合やメールが届かない場合は ${contactPhone} までお電話ください。</small>${localStorageNoticeHtml}`;
                     resultDiv.style.display = 'block';
                     resultDiv.style.color = '#856404';
                     resultDiv.style.background = '#fff3cd';
                     resultDiv.style.borderColor = '#ffeaa7';
-                    document.getElementById('reserveForm').reset();
-                    // 時間帯再描画
-                    document.getElementById('date').dispatchEvent(new Event('change'));
-                });
-                */
+                } finally {
+                    await resetAndRefreshUI();
+                }
             });
             
             // 時間選択時のイベントリスナー追加

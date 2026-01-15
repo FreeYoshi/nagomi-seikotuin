@@ -98,6 +98,7 @@ window.AppConfig = {
     // 連絡先情報
     contact: {
         phone: '0985-73-9884',
+        email: 'nagomi.y.c.j.t@gmail.com',
         instagram: 'https://www.instagram.com/nagomi0510seikotuin/',
         line: 'https://line.me/R/ti/p/@osy8134l?oat_content=qr#~',
         instagramHandle: '@nagomi0510seikotuin'
