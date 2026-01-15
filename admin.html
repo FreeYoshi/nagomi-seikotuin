@@ -536,10 +536,20 @@
             <main class="content">
                 <!-- 予約一覧セクション -->
                 <section id="reservationsSection" class="content-section active">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                         <h2><i class="fas fa-calendar-check"></i> 予約一覧</h2>
-                        <div>
-                            <button onclick="loadReservations()" class="btn btn-success" style="margin-right: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <button onclick="changeMonth(-1)" class="btn" style="background: #6c757d; color: white; padding: 8px 12px;">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <select id="monthFilter" onchange="loadReservations()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; min-width: 140px;">
+                                </select>
+                                <button onclick="changeMonth(1)" class="btn" style="background: #6c757d; color: white; padding: 8px 12px;">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <button onclick="loadReservations()" class="btn btn-success">
                                 <i class="fas fa-sync-alt"></i> 更新
                             </button>
                             <span id="lastUpdateTime" style="color: #666; font-size: 12px;"></span>
@@ -832,6 +842,7 @@
             setupEventListeners();
             setupPasswordResetListeners();
             initializeFormElements();
+            initMonthFilter();
         }
         
         function setupPasswordResetListeners() {
@@ -1252,14 +1263,60 @@
             const dt = new Date(datetimeStr);
             const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
             const dayName = dayNames[dt.getDay()];
-            
+
             const year = dt.getFullYear();
             const month = String(dt.getMonth() + 1).padStart(2, '0');
             const date = String(dt.getDate()).padStart(2, '0');
             const hour = String(dt.getHours()).padStart(2, '0');
             const minute = String(dt.getMinutes()).padStart(2, '0');
-            
+
             return `${year}-${month}-${date} (${dayName}) ${hour}:${minute}`;
+        }
+
+        // 月選択肢の初期化
+        function initMonthFilter() {
+            const select = document.getElementById('monthFilter');
+            if (!select) return;
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+
+            select.innerHTML = '';
+
+            // 過去12ヶ月 + 今月 + 未来3ヶ月を選択肢に追加
+            for (let i = -12; i <= 3; i++) {
+                const date = new Date(currentYear, currentMonth + i, 1);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const value = `${year}-${String(month + 1).padStart(2, '0')}`;
+                const label = `${year}年${month + 1}月`;
+
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+
+                // 今月をデフォルト選択
+                if (i === 0) {
+                    option.selected = true;
+                }
+
+                select.appendChild(option);
+            }
+        }
+
+        // 月を変更する関数
+        function changeMonth(direction) {
+            const select = document.getElementById('monthFilter');
+            if (!select) return;
+
+            const currentIndex = select.selectedIndex;
+            const newIndex = currentIndex + direction;
+
+            if (newIndex >= 0 && newIndex < select.options.length) {
+                select.selectedIndex = newIndex;
+                loadReservations();
+            }
         }
 
         // 予約一覧の読み込み
@@ -1267,47 +1324,78 @@
             console.log('📋 予約一覧読み込み開始');
             console.log('使用テーブル:', reservationTable);
             console.log('Supabaseクライアント:', !!window.supabase);
-            
+
             const tbody = document.querySelector('#reservationTable tbody');
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
-            
+
+            // 選択された月を取得
+            const monthFilter = document.getElementById('monthFilter');
+            let startDate, endDate;
+
+            if (monthFilter && monthFilter.value) {
+                const [year, month] = monthFilter.value.split('-').map(Number);
+                startDate = new Date(year, month - 1, 1);
+                endDate = new Date(year, month, 0, 23, 59, 59); // 月末
+            } else {
+                // デフォルトは今月
+                const now = new Date();
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            }
+
+            const startDateStr = startDate.toISOString();
+            const endDateStr = endDate.toISOString();
+
+            console.log('📅 フィルタ期間:', { startDate: startDateStr, endDate: endDateStr });
+
             try {
                 const { data, error } = await window.supabase
                     .from(reservationTable)
                     .select('*')
+                    .gte('datetime', startDateStr)
+                    .lte('datetime', endDateStr)
                     .order('datetime', { ascending: true });
-                
+
                 console.log('🔍 予約データ取得結果:', { data, error, count: data?.length });
-                
+
                 tbody.innerHTML = '';
-                
+
                 if (error) {
                     console.error('❌ 予約データ取得エラー:', error);
                     throw error;
                 }
-                
-                if (!data || data.length === 0) {
-                    console.log('📭 予約データが0件です');
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">予約はありません</td></tr>';
-                    return;
-                }
-                
-                console.log('✅ 予約データ表示開始:', data.length + '件');
-                
+
                 // 最終更新時刻を表示
                 const updateTimeElement = document.getElementById('lastUpdateTime');
                 if (updateTimeElement) {
                     updateTimeElement.textContent = `最終更新: ${new Date().toLocaleTimeString()}`;
                 }
-                
+
+                if (!data || data.length === 0) {
+                    console.log('📭 予約データが0件です');
+                    const [year, month] = (monthFilter?.value || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`).split('-');
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">${year}年${parseInt(month)}月の予約はありません</td></tr>`;
+                    return;
+                }
+
+                console.log('✅ 予約データ表示開始:', data.length + '件');
+
                 data.forEach(reservation => {
                     const tr = document.createElement('tr');
-                    
+
+                    // 過去の予約は背景色を変更
+                    const reservationDate = new Date(reservation.datetime);
+                    const now = new Date();
+                    if (reservationDate < now) {
+                        tr.style.backgroundColor = '#f8f9fa';
+                        tr.style.color = '#6c757d';
+                    }
+
                     // 新規顧客の表示処理
-                    const customerTypeDisplay = reservation.is_new_customer === true ? 
-                        '<span style="background:#28a745;color:white;padding:2px 6px;border-radius:3px;font-size:12px;"><i class="fas fa-star"></i> 新規</span>' : 
+                    const customerTypeDisplay = reservation.is_new_customer === true ?
+                        '<span style="background:#28a745;color:white;padding:2px 6px;border-radius:3px;font-size:12px;"><i class="fas fa-star"></i> 新規</span>' :
                         '<span style="background:#6c757d;color:white;padding:2px 6px;border-radius:3px;font-size:12px;">リピーター</span>';
-                    
+
                     // リファラーの表示処理
                     const referralDisplay = {
                         'instagram': '<i class="fab fa-instagram" style="color:#E4405F;"></i> Instagram',
@@ -1318,7 +1406,7 @@
                         'flyer': '<i class="fas fa-newspaper" style="color:#ffc107;"></i> チラシ',
                         'other': '<i class="fas fa-question" style="color:#6c757d;"></i> その他'
                     }[reservation.referral_source] || '未設定';
-                    
+
                     tr.innerHTML = `
                         <td>${reservation.name}</td>
                         <td>${reservation.phone}</td>
