@@ -942,32 +942,47 @@
                     return a.status === 'closed' ? -1 : 1;
                 });
 
-                if (time) {
-                    const targetTime = normalizeTime(time);
-                    for (const schedule of prioritized) {
-                        const startTime = normalizeTime(schedule.start_time);
-                        const endTime = normalizeTime(schedule.end_time);
+                const dayClosedEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'closed');
+                const dayOpenEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'open');
+                const hasOpenRange = prioritized.some(entry => entry.status === 'open' && (entry.start_time || entry.time));
 
-                        if (schedule.start_time && schedule.end_time) {
-                            if (targetTime >= startTime && targetTime < endTime) {
-                                console.log(`範囲マッチ: ${date} ${targetTime} -> ${schedule.status}`);
-                                return schedule.status;
-                            }
+                if (!time) {
+                    if (dayClosedEntry) {
+                        return 'closed';
+                    }
+                    if (dayOpenEntry || hasOpenRange) {
+                        return 'open';
+                    }
+                    return null;
+                }
+
+                const targetTime = normalizeTime(time);
+                for (const schedule of prioritized) {
+                    const startTime = normalizeTime(schedule.start_time);
+                    const endTime = normalizeTime(schedule.end_time);
+
+                    if (schedule.start_time && schedule.end_time) {
+                        if (targetTime >= startTime && targetTime < endTime) {
+                            console.log(`範囲マッチ: ${date} ${targetTime} -> ${schedule.status}`);
+                            return schedule.status;
                         }
+                    }
 
-                        if (schedule.time) {
-                            if (normalizeTime(schedule.time) === targetTime) {
-                                console.log(`時間マッチ: ${date} ${targetTime} -> ${schedule.status}`);
-                                return schedule.status;
-                            }
+                    if (schedule.time) {
+                        if (normalizeTime(schedule.time) === targetTime) {
+                            console.log(`時間マッチ: ${date} ${targetTime} -> ${schedule.status}`);
+                            return schedule.status;
                         }
                     }
                 }
 
-                const dayOverride = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'closed')
-                    || prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'open');
-
-                return dayOverride ? dayOverride.status : null;
+                if (dayClosedEntry) {
+                    return 'closed';
+                }
+                if (dayOpenEntry) {
+                    return 'open';
+                }
+                return null;
             } catch (error) {
                 console.error('スケジュール確認エラー:', error);
                 return null;
@@ -1184,6 +1199,15 @@
             const normalized = normalizeToStartOfDay(input);
             if (!normalized) return false;
             return normalized < todayStart;
+        }
+
+        function addMinutesToTimeStr(timeStr, minutes) {
+            if (!timeStr) return '';
+            const [hour, min] = timeStr.split(':').map(Number);
+            const base = new Date();
+            base.setHours(hour, min, 0, 0);
+            base.setMinutes(base.getMinutes() + minutes);
+            return `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}`;
         }
 
         function initApp() {
@@ -1651,6 +1675,16 @@
                     <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（12時終了のため選択不可）</option>
                 `;
             }
+
+            function restrictCourseForBlockedNextSlot() {
+                const courseSelect = document.getElementById('course');
+                
+                courseSelect.innerHTML = `
+                    <option value="">選択してください</option>
+                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（次の枠が確保できないため選択不可）</option>
+                `;
+            }
             
             // 特別営業日の時間制限チェック
             async function checkSpecialBusinessHourRestriction(dateStr, timeStr) {
@@ -1893,6 +1927,16 @@
                     
                     // 特別営業日の最終時間枠チェック
                     await checkSpecialBusinessHourRestriction(dateValue, timeValue);
+
+                    const nextSlotTime = addMinutesToTimeStr(timeValue, 30);
+                    if (nextSlotTime) {
+                        const optionExists = Array.from(timeSelect.options).some(opt => opt.value === nextSlotTime);
+                        const nextSlotStatus = await checkScheduleOverride(dateValue, nextSlotTime);
+                        if (nextSlotStatus === 'closed' || !optionExists) {
+                            restrictCourseForBlockedNextSlot();
+                            return;
+                        }
+                    }
                 } else {
                     disableCourseAndSubmit('時間を選択してください');
                 }

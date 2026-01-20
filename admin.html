@@ -1519,7 +1519,9 @@
                 }
 
                 // 18:30枠を消すための終端（18:30〜19:00の範囲指定用）
-                select.innerHTML += '<option value="19:00">19:00</option>';
+                if (selectId.includes('End')) {
+                    select.innerHTML += '<option value="19:00">19:00</option>';
+                }
                 
                 select.disabled = false;
             });
