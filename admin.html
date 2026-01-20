@@ -1005,6 +1005,7 @@
         function initializeFormElements() {
             // 時間選択肢を生成
             generateTimeOptions();
+            setMinDateForScheduleInputs();
             
             // 日付変更時の連動処理を設定
             setupDateChangeHandlers();
@@ -1014,6 +1015,32 @@
             document.getElementById('closedTimeEnd').disabled = true;
             document.getElementById('openTimeStart').disabled = true;
             document.getElementById('openTimeEnd').disabled = true;
+        }
+
+        function formatDateForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function setMinDateForScheduleInputs() {
+            const todayStr = formatDateForInput(new Date());
+            const inputIds = ['closedDate', 'closedTimeDate', 'openDate', 'openTimeDate'];
+            inputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                input.setAttribute('min', todayStr);
+                input.addEventListener('change', function() {
+                    if (!this.value) {
+                        return;
+                    }
+                    if (this.value < todayStr) {
+                        alert('過去の日付は選択できません');
+                        this.value = '';
+                    }
+                });
+            });
         }
 
         function setupEventListeners() {
