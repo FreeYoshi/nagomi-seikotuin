@@ -1939,6 +1939,7 @@
                 const timeValue = this.value;
                 const dateValue = document.getElementById('date').value;
                 const timeSelectEl = document.getElementById('time');
+                const dateObj = dateValue ? new Date(dateValue + 'T00:00:00') : null;
                 
                 if (timeValue && dateValue) {
                     enableCourseAndSubmit();
@@ -1950,14 +1951,11 @@
                     }
                     
                     // 土曜日11:30の場合は1時間コースを制限（12時終了のため）
-                    if (timeValue === '11:30') {
-                        const dateObj = new Date(dateValue + 'T00:00:00');
-                        if (dateObj.getDay() === 6) { // 土曜日
-                            restrictCourseForSaturdayLastSlot();
-                            return;
-                        }
+                    if (timeValue === '11:30' && dateObj && dateObj.getDay() === 6) {
+                        restrictCourseForSaturdayLastSlot();
+                        return;
                     }
-                    
+
                     // 特別営業日の最終時間枠チェック
                     await checkSpecialBusinessHourRestriction(dateValue, timeValue);
 
