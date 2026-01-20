@@ -651,7 +651,24 @@
                         </div>
                         
                         <div class="control-group">
-                            <h4><i class="fas fa-list"></i> 休業・営業履歴</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                                <h4 style="margin: 0;"><i class="fas fa-list"></i> 休業・営業履歴</h4>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <button onclick="changeScheduleMonth(-1)" class="btn" style="background: #6c757d; color: white; padding: 8px 12px;">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <select id="scheduleMonthFilter" onchange="loadScheduleOverrides()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; min-width: 140px;"></select>
+                                        <button onclick="changeScheduleMonth(1)" class="btn" style="background: #6c757d; color: white; padding: 8px 12px;">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                    <button onclick="loadScheduleOverrides()" class="btn btn-success">
+                                        <i class="fas fa-sync-alt"></i> 更新
+                                    </button>
+                                    <span id="scheduleLastUpdateTime" style="color: #666; font-size: 12px;"></span>
+                                </div>
+                            </div>
                             <div class="table-responsive">
                                 <table id="scheduleTable" class="admin-table">
                                     <thead>
@@ -843,6 +860,7 @@
             setupPasswordResetListeners();
             initializeFormElements();
             initMonthFilter();
+            initMonthFilter('scheduleMonthFilter');
         }
         
         function setupPasswordResetListeners() {
@@ -1274,13 +1292,15 @@
         }
 
         // 月選択肢の初期化
-        function initMonthFilter() {
-            const select = document.getElementById('monthFilter');
+        function initMonthFilter(selectId = 'monthFilter') {
+            const select = document.getElementById(selectId);
             if (!select) return;
 
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
+
+            const previousValue = select.value;
 
             select.innerHTML = '';
 
@@ -1296,8 +1316,9 @@
                 option.value = value;
                 option.textContent = label;
 
-                // 今月をデフォルト選択
-                if (i === 0) {
+                if (previousValue) {
+                    option.selected = value === previousValue;
+                } else if (i === 0) {
                     option.selected = true;
                 }
 
@@ -1307,7 +1328,15 @@
 
         // 月を変更する関数
         function changeMonth(direction) {
-            const select = document.getElementById('monthFilter');
+            adjustMonthSelection('monthFilter', loadReservations, direction);
+        }
+
+        function changeScheduleMonth(direction) {
+            adjustMonthSelection('scheduleMonthFilter', loadScheduleOverrides, direction);
+        }
+
+        function adjustMonthSelection(selectId, reloadFn, direction) {
+            const select = document.getElementById(selectId);
             if (!select) return;
 
             const currentIndex = select.selectedIndex;
@@ -1315,8 +1344,33 @@
 
             if (newIndex >= 0 && newIndex < select.options.length) {
                 select.selectedIndex = newIndex;
-                loadReservations();
+                reloadFn();
             }
+        }
+
+        function getMonthRangeFromSelect(selectId) {
+            const select = document.getElementById(selectId);
+            let year;
+            let month;
+
+            if (select && select.value) {
+                const [yearStr, monthStr] = select.value.split('-');
+                year = Number(yearStr);
+                month = Number(monthStr);
+            } else {
+                const now = new Date();
+                year = now.getFullYear();
+                month = now.getMonth() + 1;
+            }
+
+            const paddedMonth = String(month).padStart(2, '0');
+            const lastDay = new Date(year, month, 0).getDate();
+
+            return {
+                startDateStr: `${year}-${paddedMonth}-01`,
+                endDateStr: `${year}-${paddedMonth}-${String(lastDay).padStart(2, '0')}`,
+                label: `${year}年${month}月`
+            };
         }
 
         // 予約一覧の読み込み
@@ -1453,7 +1507,7 @@
                 
                 select.innerHTML = selectId.includes('Start') ? '<option value="">開始時間</option>' : '<option value="">終了時間</option>';
                 
-                // 平日・土曜の営業時間を基準に選択肢生成（9:00〜18:30）
+                // 平日・土曜の営業時間を基準に選択肢生成（9:00〜18:30、終了境界用に19:00）
                 for (let h = 9; h <= 18; h++) {
                     ['00', '30'].forEach(min => {
                         // 18:30まで含むように条件を修正
@@ -1463,6 +1517,9 @@
                         }
                     });
                 }
+
+                // 18:30枠を消すための終端（18:30〜19:00の範囲指定用）
+                select.innerHTML += '<option value="19:00">19:00</option>';
                 
                 select.disabled = false;
             });
@@ -1786,57 +1843,68 @@
         // スケジュール履歴の読み込み
         async function loadScheduleOverrides() {
             const tbody = document.querySelector('#scheduleTable tbody');
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
-            
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</td></tr>';
+
+            const { startDateStr, endDateStr, label: monthLabel } = getMonthRangeFromSelect('scheduleMonthFilter');
+
             try {
                 const { data, error } = await window.supabase
                     .from(scheduleTable)
                     .select('*')
-                    .order('date', { ascending: false });
-                
+                    .gte('date', startDateStr)
+                    .lte('date', endDateStr)
+                    .order('date', { ascending: false })
+                    .order('start_time', { ascending: true, nullsFirst: true });
+
                 tbody.innerHTML = '';
-                
+
                 if (error) throw error;
-                
+
+                const updateTimeElement = document.getElementById('scheduleLastUpdateTime');
+                if (updateTimeElement) {
+                    updateTimeElement.textContent = `最終更新: ${new Date().toLocaleTimeString()}`;
+                }
+
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">設定はありません</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#666;">${monthLabel}の設定はありません</td></tr>`;
                     return;
                 }
-                
-                // 時間範囲でグループ化して表示
+
+                const normalizeTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
+                const formatTimeCell = (value, fallbackLabel = '終日') => value ? normalizeTime(value) : fallbackLabel;
+
                 const groupedSchedules = {};
                 data.forEach(schedule => {
-                    const key = `${schedule.date}_${schedule.status}_${schedule.start_time || 'day'}_${schedule.end_time || 'day'}`;
+                    const startKey = schedule.start_time ? normalizeTime(schedule.start_time) : (schedule.time ? normalizeTime(schedule.time) : 'day');
+                    const endKey = schedule.end_time ? normalizeTime(schedule.end_time) : (schedule.time ? normalizeTime(schedule.time) : 'day');
+                    const key = `${schedule.date}_${schedule.status}_${startKey}_${endKey}`;
                     if (!groupedSchedules[key]) {
                         groupedSchedules[key] = {
                             ...schedule,
+                            start_display: schedule.start_time ? formatTimeCell(schedule.start_time) : (schedule.time ? formatTimeCell(schedule.time) : '終日'),
+                            end_display: schedule.end_time ? formatTimeCell(schedule.end_time) : (schedule.time ? formatTimeCell(schedule.time) : '終日'),
                             ids: [schedule.id]
                         };
                     } else {
                         groupedSchedules[key].ids.push(schedule.id);
                     }
                 });
-                
+
                 Object.values(groupedSchedules).forEach(schedule => {
                     const tr = document.createElement('tr');
-                    const startTime = schedule.start_time || (schedule.time ? schedule.time : '終日');
-                    const endTime = schedule.end_time || (schedule.time ? schedule.time : '終日');
-                    const timeDisplay = schedule.start_time && schedule.end_time ? 
-                        `${schedule.start_time}〜${schedule.end_time}` : 
-                        (schedule.time || '終日');
-                    
-                    // 日付に曜日を追加
+
                     const dateWithDay = (() => {
                         const dt = new Date(schedule.date + 'T00:00:00');
                         const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
                         const dayName = dayNames[dt.getDay()];
                         return `${schedule.date} (${dayName})`;
                     })();
-                    
+
                     tr.innerHTML = `
                         <td>${dateWithDay}</td>
-                        <td>${schedule.start_time || (schedule.time || '終日')}</td>
-                        <td>${schedule.end_time || (schedule.time || '終日')}</td>
+                        <td>${schedule.start_display}</td>
+                        <td>${schedule.end_display}</td>
                         <td>
                             <span class="badge" style="font-weight: bold; padding: 10px 16px; color: white; background: ${schedule.status === 'closed' ? '#b71c1c' : '#1b5e20'}; border-radius: 6px;">
                                 ${schedule.status === 'closed' ? '🚫 休業' : '✅ 営業'}
@@ -1852,7 +1920,7 @@
                 });
             } catch (error) {
                 console.error('スケジュール履歴取得エラー:', error);
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#dc3545;">取得エラー</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#dc3545;">取得エラー</td></tr>';
             }
         }
 

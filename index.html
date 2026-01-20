@@ -931,56 +931,43 @@
             try {
                 const data = await fetchScheduleOverrides(date);
                 if (!data || data.length === 0) {
-                    return null; // 設定なし = 通常営業
+                    return null;
                 }
 
-                // 時間指定がある場合の確認
-                if (time) {
-                    console.log(`スケジュール確認: ${date} ${time} (休業かどうかチェック)`, data);
-
-                    // 1. 直接時間マッチ（旧形式との互換性）
-                    const directMatch = data.find(d => d.time === time);
-                    if (directMatch) {
-                        console.log(`直接マッチ: ${time} → ${directMatch.status}`);
-                        return directMatch.status;
+                const normalizeTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
+                const prioritized = data.slice().sort((a, b) => {
+                    if (a.status === b.status) {
+                        return 0;
                     }
+                    return a.status === 'closed' ? -1 : 1;
+                });
 
-                    // 2. 時間範囲内チェック（新形式）
-                    for (const schedule of data) {
+                if (time) {
+                    const targetTime = normalizeTime(time);
+                    for (const schedule of prioritized) {
+                        const startTime = normalizeTime(schedule.start_time);
+                        const endTime = normalizeTime(schedule.end_time);
+
                         if (schedule.start_time && schedule.end_time) {
-                            const normalizeTime = (timeStr) => {
-                                if (!timeStr) return '';
-                                return timeStr.slice(0, 5);
-                            };
+                            if (targetTime >= startTime && targetTime < endTime) {
+                                console.log(`範囲マッチ: ${date} ${targetTime} -> ${schedule.status}`);
+                                return schedule.status;
+                            }
+                        }
 
-                            const normalizedTime = normalizeTime(time);
-                            const normalizedStartTime = normalizeTime(schedule.start_time);
-                            const normalizedEndTime = normalizeTime(schedule.end_time);
-
-                            console.log(`スケジュール確認: ${normalizedTime} vs ${normalizedStartTime}-${normalizedEndTime} (${schedule.status})`);
-
-                            if (normalizedTime >= normalizedStartTime && normalizedTime < normalizedEndTime) {
-                                console.log(`範囲マッチ: ${normalizedTime} は ${normalizedStartTime}〜${normalizedEndTime}の範囲内 → ${schedule.status}`);
+                        if (schedule.time) {
+                            if (normalizeTime(schedule.time) === targetTime) {
+                                console.log(`時間マッチ: ${date} ${targetTime} -> ${schedule.status}`);
                                 return schedule.status;
                             }
                         }
                     }
-
-                    console.log(`マッチなし: ${time}`);
                 }
 
-                // 終日設定があるかチェック（時間範囲設定も含む）
-                const hasTimeRange = data.some(d => d.start_time && d.end_time);
-                if (hasTimeRange) {
-                    return 'open';
-                }
+                const dayOverride = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'closed')
+                    || prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'open');
 
-                const dayMatch = data.find(d => d.time === null && !d.start_time && !d.end_time);
-                if (dayMatch) {
-                    return dayMatch.status;
-                }
-
-                return null;
+                return dayOverride ? dayOverride.status : null;
             } catch (error) {
                 console.error('スケジュール確認エラー:', error);
                 return null;
