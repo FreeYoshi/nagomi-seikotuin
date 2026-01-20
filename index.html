@@ -830,6 +830,38 @@
             , []);
             return Array.isArray(data) ? data : [];
         }
+
+        async function isSlotReserved(dateStr, timeStr) {
+            const reservations = await getReservationData();
+            const targetKey = `${dateStr}T${timeStr}`.slice(0, 16);
+
+            for (const reservation of reservations) {
+                if (!reservation?.datetime) {
+                    continue;
+                }
+                const baseKey = reservation.datetime.slice(0, 16);
+                if (baseKey === targetKey) {
+                    return true;
+                }
+                if (reservation.course === '1時間コース') {
+                    const [datePart, timePart] = reservation.datetime.split('T');
+                    if (!datePart || !timePart) {
+                        continue;
+                    }
+                    const [hour, minute] = timePart.split(':');
+                    const dt = new Date();
+                    const [year, month, day] = datePart.split('-');
+                    dt.setFullYear(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+                    dt.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
+                    dt.setMinutes(dt.getMinutes() + 30);
+                    const overflowKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}T${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                    if (overflowKey.slice(0, 16) === targetKey) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         
         // 連絡先情報を動的に設定
         function updateContactInfo() {
@@ -1906,6 +1938,7 @@
             document.getElementById('time').addEventListener('change', async function() {
                 const timeValue = this.value;
                 const dateValue = document.getElementById('date').value;
+                const timeSelectEl = document.getElementById('time');
                 
                 if (timeValue && dateValue) {
                     enableCourseAndSubmit();
@@ -1930,9 +1963,10 @@
 
                     const nextSlotTime = addMinutesToTimeStr(timeValue, 30);
                     if (nextSlotTime) {
-                        const optionExists = Array.from(timeSelect.options).some(opt => opt.value === nextSlotTime);
+                        const optionExists = Array.from(timeSelectEl.options).some(opt => opt.value === nextSlotTime);
                         const nextSlotStatus = await checkScheduleOverride(dateValue, nextSlotTime);
-                        if (nextSlotStatus === 'closed' || !optionExists) {
+                        const nextSlotReserved = await isSlotReserved(dateValue, nextSlotTime);
+                        if (nextSlotStatus === 'closed' || !optionExists || nextSlotReserved) {
                             restrictCourseForBlockedNextSlot();
                             return;
                         }
