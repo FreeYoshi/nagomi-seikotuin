@@ -4,6 +4,7 @@
     <!-- 設定ファイル -->
     <script src="config/env.js"></script>
     <script src="config/config.js"></script>
+    <script src="calendar-sync.js"></script>
     <!-- flatpickr CSS/JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -293,6 +294,41 @@
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
+        .booking-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .booking-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px dashed #c8e6c9;
+            color: #5d8a5f;
+            font-weight: 600;
+            background: #f9fff9;
+            transition: all 0.2s ease;
+        }
+        .booking-step span {
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            color: #8da58f;
+            margin-bottom: 4px;
+        }
+        .booking-step strong {
+            font-size: 16px;
+        }
+        .booking-step.active {
+            border-style: solid;
+            border-color: #66bb6a;
+            background: linear-gradient(135deg, #e8f5e9, #f1fff1);
+            color: #1b5e20;
+            box-shadow: inset 0 0 0 1px rgba(102, 187, 106, 0.3);
+        }
         .form-group {
             margin-bottom: 25px;
         }
@@ -427,6 +463,9 @@
             }
             .form-container {
                 padding: 30px 20px;
+            }
+            .booking-flow {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -668,12 +707,32 @@
                             <option value="other">その他</option>
                         </select>
                     </div>
+                    <div class="booking-flow" id="bookingFlow">
+                        <div class="booking-step active" data-step="date">
+                            <span>STEP 1</span>
+                            <strong>予約日</strong>
+                        </div>
+                        <div class="booking-step" data-step="course">
+                            <span>STEP 2</span>
+                            <strong>コース</strong>
+                        </div>
+                        <div class="booking-step" data-step="time">
+                            <span>STEP 3</span>
+                            <strong>可能な時間帯</strong>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="date"><i class="fas fa-calendar-alt"></i> 予約日</label>
                         <input type="text" id="date" required placeholder="カレンダーから日付を選択">
                     </div>
                     <div class="form-group">
-                        <label for="time"><i class="fas fa-clock"></i> 予約時間</label>
+                        <label for="course"><i class="fas fa-list"></i> コース</label>
+                        <select id="course" required>
+                            <option value="">まず予約日を選択してください</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="time"><i class="fas fa-clock"></i> 可能な時間帯</label>
                         <div class="business-hours">
                             <h4><i class="fas fa-info-circle"></i> 営業時間</h4>
                             <div style="line-height: 1.6;">
@@ -681,15 +740,7 @@
                             </div>
                         </div>
                         <select id="time" required>
-                            <option value="">まず日付を選択してください</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="course"><i class="fas fa-list"></i> コース</label>
-                        <select id="course" required>
-                            <option value="">選択してください</option>
-                            <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                            <option value="1時間コース">1時間コース - 4,000円（しっかり治療・初回推奨）</option>
+                            <option value="">まず日付とコースを選択してください</option>
                         </select>
                     </div>
                     <button type="submit" class="submit-btn">
@@ -717,6 +768,24 @@
         const dateInputDefaultPlaceholder = dateInputElement?.getAttribute('placeholder') || 'カレンダーから日付を選択';
         let dateLoadingIndicator = null;
         window.emailJSEnabled = false;
+        const courseSelectElement = document.getElementById('course');
+        const timeSelectElement = document.getElementById('time');
+        const submitButtonElement = document.querySelector('.submit-btn');
+        const bookingFlowElement = document.getElementById('bookingFlow');
+        const bookingStepElements = bookingFlowElement ? bookingFlowElement.querySelectorAll('.booking-step') : [];
+        const COURSE_SELECT_OPTIONS = `
+            <option value="">選択してください</option>
+            <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
+            <option value="1時間コース">1時間コース - 4,000円（しっかり治療・初回推奨）</option>
+        `;
+        const COURSE_DURATION_MINUTES = {
+            '30分コース': 30,
+            '1時間コース': 60
+        };
+        let selectedDateValue = '';
+        let selectedCourseValue = '';
+        let latestTimeSlots = [];
+        const calendarConfig = window.AppConfig?.calendarIntegration || null;
 
         const SUPABASE_PLACEHOLDER_HOSTS = ['your-project-id.supabase.co'];
         const isPlaceholderUrl = !SUPABASE_URL || SUPABASE_PLACEHOLDER_HOSTS.some(host => SUPABASE_URL.includes(host));
@@ -770,6 +839,108 @@
         }
 
         setDateInputLoading(true, '予約日を準備中です...');
+
+        function updateBookingStepsState({ date = false, course = false, time = false }) {
+            bookingStepElements.forEach(step => {
+                const stepName = step.dataset.step;
+                const isActive = (stepName === 'date' && date) ||
+                                (stepName === 'course' && course) ||
+                                (stepName === 'time' && time);
+                step.classList.toggle('active', isActive);
+            });
+        }
+
+        function renderCourseSelect(disabledMessage = null) {
+            if (!courseSelectElement) return;
+            if (disabledMessage) {
+                courseSelectElement.innerHTML = `<option value="">${disabledMessage}</option>`;
+                courseSelectElement.disabled = true;
+                return;
+            }
+            courseSelectElement.disabled = false;
+            courseSelectElement.innerHTML = COURSE_SELECT_OPTIONS;
+            courseSelectElement.value = '';
+        }
+
+        function resetTimeSelect(message = 'まず日付とコースを選択してください') {
+            if (!timeSelectElement) return;
+            timeSelectElement.innerHTML = `<option value="">${message}</option>`;
+            timeSelectElement.disabled = true;
+            timeSelectElement.value = '';
+        }
+
+        function populateTimeSelect(slots) {
+            if (!timeSelectElement) return;
+            if (!slots || !slots.length) {
+                resetTimeSelect('選択した条件で予約可能な時間がありません');
+                return;
+            }
+            const options = slots.map(slot => {
+                const status = slot.isSpecial ? '〇（特別営業）' : '〇';
+                return `<option value="${slot.time}">${slot.time} ${status}</option>`;
+            }).join('');
+            timeSelectElement.innerHTML = options;
+            timeSelectElement.disabled = false;
+            timeSelectElement.value = '';
+        }
+
+        function setSubmitDisabled(message) {
+            if (!submitButtonElement) return;
+            submitButtonElement.disabled = true;
+            submitButtonElement.style.opacity = '0.5';
+            submitButtonElement.style.cursor = 'not-allowed';
+            submitButtonElement.innerHTML = `<i class="fas fa-ban"></i> ${message}`;
+        }
+
+        function setSubmitEnabled() {
+            if (!submitButtonElement) return;
+            submitButtonElement.disabled = false;
+            submitButtonElement.style.opacity = '1';
+            submitButtonElement.style.cursor = 'pointer';
+            submitButtonElement.innerHTML = '<i class="fas fa-paper-plane"></i> 予約を送信する';
+        }
+
+        function getCourseDuration(courseName) {
+            return COURSE_DURATION_MINUTES[courseName] || 30;
+        }
+
+        function getCalendarIntegrationFlag(value) {
+            if (typeof value === 'function') {
+                try {
+                    return value();
+                } catch (error) {
+                    console.warn('[CalendarSync] 設定取得エラー:', error);
+                    return null;
+                }
+            }
+            return value;
+        }
+
+        function isCalendarIntegrationAvailable() {
+            if (!calendarConfig) {
+                return false;
+            }
+            const enabled = getCalendarIntegrationFlag(calendarConfig.enabled);
+            const endpoint = getCalendarIntegrationFlag(calendarConfig.endpoint);
+            return !!(enabled && endpoint && window.CalendarSync?.sync);
+        }
+
+        async function syncCalendarReservation(action, reservation) {
+            if (!isCalendarIntegrationAvailable()) {
+                return { skipped: true };
+            }
+            try {
+                return await window.CalendarSync.sync(action, reservation);
+            } catch (error) {
+                console.warn('[CalendarSync] 連携に失敗しました:', error);
+                return { error };
+            }
+        }
+
+        updateBookingStepsState({ date: true, course: false, time: false });
+        renderCourseSelect('まず予約日を選択してください');
+        resetTimeSelect('まず日付とコースを選択してください');
+        setSubmitDisabled('まず日付と時間を選択してください');
 
 
         function readLocalData(key) {
@@ -870,38 +1041,6 @@
             return Array.isArray(data) ? data : [];
         }
 
-        async function isSlotReserved(dateStr, timeStr) {
-            const reservations = await getReservationData();
-            const targetKey = `${dateStr}T${timeStr}`.slice(0, 16);
-
-            for (const reservation of reservations) {
-                if (!reservation?.datetime) {
-                    continue;
-                }
-                const baseKey = reservation.datetime.slice(0, 16);
-                if (baseKey === targetKey) {
-                    return true;
-                }
-                if (reservation.course === '1時間コース') {
-                    const [datePart, timePart] = reservation.datetime.split('T');
-                    if (!datePart || !timePart) {
-                        continue;
-                    }
-                    const [hour, minute] = timePart.split(':');
-                    const dt = new Date();
-                    const [year, month, day] = datePart.split('-');
-                    dt.setFullYear(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-                    dt.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
-                    dt.setMinutes(dt.getMinutes() + 30);
-                    const overflowKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}T${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-                    if (overflowKey.slice(0, 16) === targetKey) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        
         // 連絡先情報を動的に設定
         function updateContactInfo() {
             const contactConfig = window.AppConfig.contact;
@@ -998,62 +1137,66 @@
         }
 
         // スケジュール管理関数
-        async function checkScheduleOverride(date, time = null) {
-            try {
-                const data = await fetchScheduleOverrides(date);
-                if (!data || data.length === 0) {
-                    return null;
+        function resolveScheduleStatusFromData(data, time = null) {
+            if (!data || data.length === 0) {
+                return null;
+            }
+
+            const normalizeTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
+            const prioritized = data.slice().sort((a, b) => {
+                if (a.status === b.status) {
+                    return 0;
                 }
+                return a.status === 'closed' ? -1 : 1;
+            });
 
-                const normalizeTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
-                const prioritized = data.slice().sort((a, b) => {
-                    if (a.status === b.status) {
-                        return 0;
-                    }
-                    return a.status === 'closed' ? -1 : 1;
-                });
+            const dayClosedEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'closed');
+            const dayOpenEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'open');
+            const hasOpenRange = prioritized.some(entry => entry.status === 'open' && (entry.start_time || entry.time));
 
-                const dayClosedEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'closed');
-                const dayOpenEntry = prioritized.find(entry => entry.time === null && !entry.start_time && !entry.end_time && entry.status === 'open');
-                const hasOpenRange = prioritized.some(entry => entry.status === 'open' && (entry.start_time || entry.time));
-
-                if (!time) {
-                    if (dayClosedEntry) {
-                        return 'closed';
-                    }
-                    if (dayOpenEntry || hasOpenRange) {
-                        return 'open';
-                    }
-                    return null;
-                }
-
-                const targetTime = normalizeTime(time);
-                for (const schedule of prioritized) {
-                    const startTime = normalizeTime(schedule.start_time);
-                    const endTime = normalizeTime(schedule.end_time);
-
-                    if (schedule.start_time && schedule.end_time) {
-                        if (targetTime >= startTime && targetTime < endTime) {
-                            console.log(`範囲マッチ: ${date} ${targetTime} -> ${schedule.status}`);
-                            return schedule.status;
-                        }
-                    }
-
-                    if (schedule.time) {
-                        if (normalizeTime(schedule.time) === targetTime) {
-                            console.log(`時間マッチ: ${date} ${targetTime} -> ${schedule.status}`);
-                            return schedule.status;
-                        }
-                    }
-                }
-
+            if (!time) {
                 if (dayClosedEntry) {
                     return 'closed';
                 }
-                if (dayOpenEntry) {
+                if (dayOpenEntry || hasOpenRange) {
                     return 'open';
                 }
                 return null;
+            }
+
+            const targetTime = normalizeTime(time);
+            for (const schedule of prioritized) {
+                const startTime = normalizeTime(schedule.start_time);
+                const endTime = normalizeTime(schedule.end_time);
+
+                if (schedule.start_time && schedule.end_time) {
+                    if (targetTime >= startTime && targetTime < endTime) {
+                        console.log(`範囲マッチ: ${schedule.date} ${targetTime} -> ${schedule.status}`);
+                        return schedule.status;
+                    }
+                }
+
+                if (schedule.time) {
+                    if (normalizeTime(schedule.time) === targetTime) {
+                        console.log(`時間マッチ: ${schedule.date} ${targetTime} -> ${schedule.status}`);
+                        return schedule.status;
+                    }
+                }
+            }
+
+            if (dayClosedEntry) {
+                return 'closed';
+            }
+            if (dayOpenEntry) {
+                return 'open';
+            }
+            return null;
+        }
+
+        async function checkScheduleOverride(date, time = null, preloadedData = null) {
+            try {
+                const data = preloadedData || await fetchScheduleOverrides(date);
+                return resolveScheduleStatusFromData(data, time);
             } catch (error) {
                 console.error('スケジュール確認エラー:', error);
                 return null;
@@ -1281,6 +1424,152 @@
             return `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}`;
         }
 
+        function minutesFromTimeString(value) {
+            if (!value) {
+                return NaN;
+            }
+            const [hour, minute] = value.split(':').map(Number);
+            if (Number.isNaN(hour) || Number.isNaN(minute)) {
+                return NaN;
+            }
+            return hour * 60 + minute;
+        }
+
+        function generateTimeSequence(startTime, endTime) {
+            const slots = [];
+            const startMinutes = minutesFromTimeString(startTime);
+            const endMinutes = minutesFromTimeString(endTime);
+            if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
+                return slots;
+            }
+            const lastBookable = endMinutes - 30;
+            for (let current = startMinutes; current <= lastBookable; current += 30) {
+                const hour = Math.floor(current / 60);
+                const minute = current % 60;
+                slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+            }
+            return slots;
+        }
+
+        function buildReservedSet(reservations = []) {
+            const reservedSet = new Set();
+            (reservations || []).forEach(r => {
+                if (!r?.datetime) {
+                    return;
+                }
+                const base = r.datetime.slice(0, 16);
+                reservedSet.add(base);
+                if (r.course === '1時間コース') {
+                    const [datepart, timepart] = r.datetime.split('T');
+                    if (!datepart || !timepart) {
+                        return;
+                    }
+                    const [hour, min] = timepart.split(':');
+                    const dt = new Date();
+                    const [year, month, day] = datepart.split('-');
+                    dt.setFullYear(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+                    dt.setHours(parseInt(hour, 10), parseInt(min, 10), 0, 0);
+                    dt.setMinutes(dt.getMinutes() + 30);
+                    const overflowKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}T${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                    reservedSet.add(overflowKey.slice(0, 16));
+                }
+            });
+            return reservedSet;
+        }
+
+        function filterSlotsByCourse(slots, courseName) {
+            const duration = getCourseDuration(courseName);
+            if (duration <= 30) {
+                return slots;
+            }
+            const requiredSteps = Math.ceil(duration / 30);
+            const slotSet = new Set(slots.map(slot => slot.time));
+            return slots.filter(slot => {
+                let nextTime = slot.time;
+                for (let i = 1; i < requiredSteps; i++) {
+                    nextTime = addMinutesToTimeStr(nextTime, 30);
+                    if (!nextTime || !slotSet.has(nextTime)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        async function buildBaseTimeSlots(dateStr) {
+            if (!dateStr) {
+                return { status: 'invalid', message: '日付が選択されていません', slots: [] };
+            }
+            const dateObj = new Date(`${dateStr}T00:00:00`);
+            if (Number.isNaN(dateObj.getTime())) {
+                return { status: 'invalid', message: '有効な日付を選択してください', slots: [] };
+            }
+
+            const day = dateObj.getDay();
+            const holidayName = isJapaneseHoliday(dateObj);
+            const scheduleEntries = await fetchScheduleOverrides(dateStr);
+            const dayOverride = resolveScheduleStatusFromData(scheduleEntries, null);
+
+            if (dayOverride === 'closed') {
+                return { status: 'closed', message: '管理者設定により休業です', slots: [] };
+            }
+
+            const weekdayRange = { start: '09:00', end: '19:00' };
+            const saturdayRange = { start: '09:00', end: '12:00' };
+            let times = [];
+
+            const customOpenEntry = (scheduleEntries || []).find(entry => entry.status === 'open' && entry.start_time && entry.end_time);
+
+            if (day >= 1 && day <= 5) {
+                times = generateTimeSequence(weekdayRange.start, weekdayRange.end);
+            } else if (day === 6) {
+                times = generateTimeSequence(saturdayRange.start, saturdayRange.end);
+            } else {
+                if (dayOverride === 'open') {
+                    if (customOpenEntry) {
+                        times = generateTimeSequence(customOpenEntry.start_time, customOpenEntry.end_time);
+                    } else {
+                        times = generateTimeSequence(weekdayRange.start, weekdayRange.end);
+                    }
+                } else {
+                    const message = holidayName ? `休診日（${holidayName}）です` : '休診日です';
+                    return { status: 'closed', message, slots: [] };
+                }
+            }
+
+            if (!times.length) {
+                return { status: 'closed', message: '予約可能な時間が設定されていません', slots: [] };
+            }
+
+            const reservations = await getReservationData();
+            const reservedSet = buildReservedSet(reservations);
+            const slots = [];
+
+            for (const time of times) {
+                const datetimeKey = `${dateStr}T${time}`.slice(0, 16);
+                const isReserved = reservedSet.has(datetimeKey);
+                const timeOverride = resolveScheduleStatusFromData(scheduleEntries, time);
+
+                if (!isReserved && timeOverride !== 'closed') {
+                    slots.push({
+                        time,
+                        isSpecial: timeOverride === 'open'
+                    });
+                }
+            }
+
+            if (!slots.length) {
+                return { status: 'full', message: '全て予約済みです', slots: [] };
+            }
+
+            return {
+                status: 'ok',
+                slots,
+                holidayName,
+                message: ''
+            };
+        }
+
         async function initApp() {
             // 連絡先情報を更新
             updateContactInfo();
@@ -1499,181 +1788,99 @@
             // 日付選択時、曜日ごとに時間帯を表示（日本語化も維持）
             document.getElementById('date').addEventListener('change', async function() {
                 const dateStr = this.value;
+                selectedDateValue = dateStr;
+                selectedCourseValue = '';
+                latestTimeSlots = [];
+                setSubmitDisabled('時間を選択してください');
+                updateBookingStepsState({ date: true, course: false, time: false });
+
                 if (!dateStr) {
-                    disableCourseAndSubmit('まず日付を選択してください');
+                    renderCourseSelect('まず予約日を選択してください');
+                    resetTimeSelect('まず日付とコースを選択してください');
                     return;
                 }
-                // ローカル日付でDateオブジェクトを作成（UTCズレを防ぐ）
-                const dateObj = new Date(dateStr + 'T00:00:00');
-                const timeSelect = document.getElementById('time');
+
+                const dateObj = new Date(`${dateStr}T00:00:00`);
                 if (isPastDate(dateObj)) {
-                    timeSelect.innerHTML = '<option value="">過去の日付は選択できません</option>';
-                    timeSelect.disabled = true;
-                    disableCourseAndSubmit('過去の日付は選択できません');
+                    renderCourseSelect('過去の日付は選択できません');
+                    resetTimeSelect('過去の日付は選択できません');
+                    setSubmitDisabled('過去の日付は選択できません');
                     this.value = '';
+                    selectedDateValue = '';
+                    latestTimeSlots = [];
+                    updateBookingStepsState({ date: true, course: false, time: false });
                     return;
                 }
-                const day = dateObj.getDay();
-                const holidayName = isJapaneseHoliday(dateObj);
-                // ローディング表示＆選択不可
-                timeSelect.innerHTML = '<option value="">読み込み中...</option>';
-                timeSelect.disabled = true;
-                // 管理者設定の確認
-                const dayOverride = await checkScheduleOverride(dateStr);
-                
-                // 管理者が終日休業設定した場合
-                if (dayOverride === 'closed') {
-                    timeSelect.innerHTML = '<option value="">管理者設定により休業です</option>';
-                    timeSelect.disabled = true;
-                    disableCourseAndSubmit('管理者設定により休業です');
-                    return;
-                }
-                
-                let times = [];
-                if (day >= 1 && day <= 5) { // 平日（9:00-18:30）se
-                    for (let h = 9; h <= 18; h++) {
-                        times.push(`${h.toString().padStart(2, '0')}:00`);
-                        times.push(`${h.toString().padStart(2, '0')}:30`);
-                    }
-                } else if (day === 6) { // 土曜（12時まで営業、11時半が最後の予約）
-                    for (let h = 9; h <= 11; h++) { // 11時半までの予約
-                        times.push(`${h.toString().padStart(2, '0')}:00`);
-                        times.push(`${h.toString().padStart(2, '0')}:30`);
-                    }
-                    // 12:00は削除（11:30が最後の予約可能時間）
-                } else { // 日祝
-                    const dayType = holidayName ? `祝日（${holidayName}）` : '日曜日';
-                    console.log(`${dayType}の時間設定処理: ${dateStr} (dayOverride: ${dayOverride})`);
-                    // 管理者が営業設定した場合は営業
-                    if (dayOverride === 'open') {
-                        console.log(`${dayType}営業設定あり: ${dateStr} -> 営業時間を設定`);
-                        // 管理者が設定した営業時間を確認（詳細な時間設定があるかチェック）
-                        const scheduleData = await fetchScheduleOverrides(dateStr, 'open');
-                        
-                        if (scheduleData && scheduleData.length > 0) {
-                            // 管理者が詳細時間を設定している場合
-                            const scheduleItem = scheduleData[0];
-                            if (scheduleItem.start_time && scheduleItem.end_time) {
-                                console.log(`詳細時間設定: ${scheduleItem.start_time} - ${scheduleItem.end_time}`);
-                                
-                                // 開始時間と終了時間をパース
-                                const [startHour, startMin] = scheduleItem.start_time.split(':').map(Number);
-                                const [endHour, endMin] = scheduleItem.end_time.split(':').map(Number);
-                                
-                                // 終了時間を分単位に変換して30分引く（最後の予約可能時間）
-                                const endTotalMin = endHour * 60 + endMin;
-                                const lastBookableMin = endTotalMin - 30; // 30分前まで予約可能
-                                const lastBookableHour = Math.floor(lastBookableMin / 60);
-                                const lastBookableMinute = lastBookableMin % 60;
-                                
-                                console.log(`予約可能時間: ${scheduleItem.start_time} ～ ${lastBookableHour.toString().padStart(2, '0')}:${lastBookableMinute.toString().padStart(2, '0')}`);
-                                
-                                // 開始時間から終了時間の30分前まで30分間隔で時間を生成
-                                let currentHour = startHour;
-                                let currentMin = startMin;
-                                
-                                while (true) {
-                                    const currentTotalMin = currentHour * 60 + currentMin;
-                                    
-                                    // 最後の予約可能時間を超えたら終了
-                                    if (currentTotalMin > lastBookableMin) {
-                                        break;
-                                    }
-                                    
-                                    times.push(`${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`);
-                                    
-                                    // 30分後に進める
-                                    currentMin += 30;
-                                    if (currentMin >= 60) {
-                                        currentMin = 0;
-                                        currentHour += 1;
-                                    }
-                                }
-                            } else {
-                                // 詳細時間設定がない場合は平日と同じ（9:00-18:30）
-                                for (let h = 9; h <= 18; h++) {
-                                    times.push(`${h.toString().padStart(2, '0')}:00`);
-                                    times.push(`${h.toString().padStart(2, '0')}:30`);
-                                }
-                            }
-                        } else {
-                            // 設定データがない場合は平日と同じ
-                            for (let h = 9; h <= 18; h++) {
-                                times.push(`${h.toString().padStart(2, '0')}:00`);
-                                times.push(`${h.toString().padStart(2, '0')}:30`);
-                            }
-                        }
-                    } else {
-                        console.log(`${dayType}営業設定なし: ${dateStr} -> 休診日`);
-                        const restMessage = holidayName ? `休診日（${holidayName}）です` : '休診日です';
-                        timeSelect.innerHTML = `<option value="">${restMessage}</option>`;
-                        timeSelect.disabled = true;
-                        disableCourseAndSubmit(restMessage);
+
+                renderCourseSelect('空き状況を確認しています...');
+                resetTimeSelect('空き状況を確認しています');
+                setDateInputLoading(true, '空き状況を確認しています...');
+
+                try {
+                    const slotResult = await buildBaseTimeSlots(dateStr);
+                    latestTimeSlots = slotResult.slots || [];
+
+                    if (slotResult.status === 'closed') {
+                        const msg = slotResult.message || '休業日です';
+                        renderCourseSelect(msg);
+                        resetTimeSelect(msg);
+                        setSubmitDisabled(msg);
+                        updateBookingStepsState({ date: true, course: false, time: false });
                         return;
                     }
-                }
-                // 予約一覧（コースも取得）
-                const reserved = await getReservationData();
-                // 予約済み枠を除外するロジック（YYYY-MM-DDTHH:MM 形式で統一）
-                const reservedSet = new Set();
-                (reserved||[]).forEach(r => {
-                    // 予約開始枠
-                    const base = r.datetime.slice(0,16); // YYYY-MM-DDTHH:MM
-                    reservedSet.add(base);
-                    // 1時間コースなら+30分果も除外（ローカルタイムで判定）
-                    if (r.course === '1時間コース') {
-                        // ISO文字列を直接パースしてUTCズレを防ぐ
-                        const [datepart, timepart] = r.datetime.split('T');
-                        const [hour, min] = timepart.split(':');
-                        const dt = new Date();
-                        const [year, month, day] = datepart.split('-');
-                        dt.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day));
-                        dt.setHours(parseInt(hour), parseInt(min), 0, 0);
-                        dt.setMinutes(dt.getMinutes() + 30);
-                        // YYYY-MM-DDTHH:MM 形式で生成
-                        const yyyy = dt.getFullYear();
-                        const mm = String(dt.getMonth()+1).padStart(2,'0');
-                        const dd = String(dt.getDate()).padStart(2,'0');
-                        const hh = String(dt.getHours()).padStart(2,'0');
-                        const mins = String(dt.getMinutes()).padStart(2,'0');
-                        const plus30 = `${yyyy}-${mm}-${dd}T${hh}:${mins}`;
-                        reservedSet.add(plus30);
+
+                    if (slotResult.status === 'full') {
+                        renderCourseSelect('全て予約済みです');
+                        resetTimeSelect('全て予約済みです');
+                        setSubmitDisabled('全て予約済みです');
+                        updateBookingStepsState({ date: true, course: false, time: false });
+                        return;
                     }
-                });
-                let hasAvailable = false;
-                let options = '';
-                
-                for (const t of times) {
-                    const dt = `${dateStr}T${t}`;
-                    const dtKey = dt.slice(0,16); // YYYY-MM-DDTHH:MM
-                    const isReserved = reservedSet.has(dtKey);
-                    
-                    // 管理者設定の時間別休業確認
-                    const timeOverride = await checkScheduleOverride(dateStr, t);
-                    console.log(`時間チェック: ${dateStr} ${t} -> ${timeOverride}`);
-                    
-                    if (!isReserved && timeOverride !== 'closed') {
-                        const status = timeOverride === 'open' ? '〇（特別営業）' : '〇';
-                        options += `<option value="${t}">${t} ${status}</option>`;
-                        hasAvailable = true;
-                    } else if (timeOverride === 'closed') {
-                        // 管理者設定で休業の場合は選択肢に表示しない
-                        console.log(`休業時間のため除外: ${t} (timeOverride: ${timeOverride})`);
-                        continue;
-                    } else if (isReserved) {
-                        console.log(`予約済みのため除外: ${t}`);
-                        continue;
-                    }
+
+                    renderCourseSelect();
+                    resetTimeSelect('コースを選択してください');
+                    updateBookingStepsState({ date: false, course: true, time: false });
+                } catch (error) {
+                    console.error('時間枠取得エラー:', error);
+                    renderCourseSelect('空き状況の取得に失敗しました');
+                    resetTimeSelect('空き状況の取得に失敗しました');
+                    setSubmitDisabled('空き状況の取得に失敗しました');
+                    updateBookingStepsState({ date: true, course: false, time: false });
+                } finally {
+                    setDateInputLoading(false);
                 }
-                if (!hasAvailable) {
-                    options = '<option value="">全て予約済みです</option>';
-                    disableCourseAndSubmit('全て予約済みです');
-                } else {
-                    enableCourseAndSubmit();
-                }
-                timeSelect.innerHTML = options;
-                timeSelect.disabled = !hasAvailable;
             });
+
+            if (courseSelectElement) {
+                courseSelectElement.addEventListener('change', function() {
+                    selectedCourseValue = this.value;
+                    if (!selectedDateValue) {
+                        renderCourseSelect('まず予約日を選択してください');
+                        resetTimeSelect('まず日付とコースを選択してください');
+                        setSubmitDisabled('まず日付を選択してください');
+                        updateBookingStepsState({ date: false, course: false, time: false });
+                        return;
+                    }
+
+                    if (!selectedCourseValue) {
+                        resetTimeSelect('コースを選択してください');
+                        setSubmitDisabled('時間を選択してください');
+                        updateBookingStepsState({ date: true, course: false, time: false });
+                        return;
+                    }
+
+                    const filteredSlots = filterSlotsByCourse(latestTimeSlots, selectedCourseValue);
+                    if (!filteredSlots.length) {
+                        resetTimeSelect('選択したコースで予約可能な時間がありません');
+                        setSubmitDisabled('別の時間帯をご検討ください');
+                        updateBookingStepsState({ date: true, course: true, time: false });
+                        return;
+                    }
+                    populateTimeSelect(filteredSlots);
+                    setSubmitDisabled('時間を選択してください');
+                    updateBookingStepsState({ date: true, course: true, time: false });
+                });
+            }
 
 
             // 予約済み時間を取得し、選択不可にする
@@ -1682,126 +1889,6 @@
                 // 予約済み時間の取得のみ（UI反映はdate/timeのchangeイベントで実施）
             }
             
-            // コースと送信ボタンを無効化
-            function disableCourseAndSubmit(reason) {
-                const courseSelect = document.getElementById('course');
-                const submitBtn = document.querySelector('.submit-btn');
-                
-                courseSelect.disabled = true;
-                courseSelect.innerHTML = `<option value="">${reason}</option>`;
-                
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.5';
-                submitBtn.style.cursor = 'not-allowed';
-                submitBtn.innerHTML = '<i class="fas fa-ban"></i> 予約できません';
-            }
-            
-            // コースと送信ボタンを有効化
-            function enableCourseAndSubmit() {
-                const courseSelect = document.getElementById('course');
-                const submitBtn = document.querySelector('.submit-btn');
-                
-                courseSelect.disabled = false;
-                courseSelect.innerHTML = `
-                    <option value="">選択してください</option>
-                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                    <option value="1時間コース">1時間コース - 4,000円（しっかり治療・初回推奨）</option>
-                `;
-                
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 予約を送信する';
-            }
-            
-            // 18:30用のコース制限関数
-            function restrictCourseFor1830() {
-                const courseSelect = document.getElementById('course');
-                
-                courseSelect.innerHTML = `
-                    <option value="">選択してください</option>
-                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（時間不足のため選択不可）</option>
-                `;
-            }
-            
-            // 特別営業時間の最終枠制限関数
-            function restrictCourseForSpecialLastSlot() {
-                const courseSelect = document.getElementById('course');
-                
-                courseSelect.innerHTML = `
-                    <option value="">選択してください</option>
-                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（特別営業時間不足のため選択不可）</option>
-                `;
-            }
-            
-            // 土曜日11:30用のコース制限関数
-            function restrictCourseForSaturdayLastSlot() {
-                const courseSelect = document.getElementById('course');
-                
-                courseSelect.innerHTML = `
-                    <option value="">選択してください</option>
-                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（12時終了のため選択不可）</option>
-                `;
-            }
-
-            function restrictCourseForBlockedNextSlot() {
-                const courseSelect = document.getElementById('course');
-                
-                courseSelect.innerHTML = `
-                    <option value="">選択してください</option>
-                    <option value="30分コース">30分コース - 2,000円（軽度の症状・メンテナンス）</option>
-                    <option value="1時間コース" disabled style="color: #ccc;">1時間コース - 4,000円（次の枠が確保できないため選択不可）</option>
-                `;
-            }
-            
-            // 特別営業日の時間制限チェック
-            async function checkSpecialBusinessHourRestriction(dateStr, timeStr) {
-                try {
-                    const dateObj = new Date(dateStr + 'T00:00:00');
-                    const day = dateObj.getDay();
-                    const holidayName = isJapaneseHoliday(dateObj);
-                    
-                    // 日曜日または祝日の特別営業をチェック
-                    if (day === 0 || holidayName) {
-                        const dayOverride = await checkScheduleOverride(dateStr);
-                        if (dayOverride === 'open') {
-                            // 管理者設定の営業時間を取得
-                            const scheduleData = await fetchScheduleOverrides(dateStr, 'open');
-                            
-                            if (scheduleData && scheduleData.length > 0) {
-                                const scheduleItem = scheduleData[0];
-                                if (scheduleItem.start_time && scheduleItem.end_time) {
-                                    const [endHour, endMin] = scheduleItem.end_time.split(':').map(Number);
-                                    
-                                    // 終了時間の30分前を計算
-                                    const endTotalMin = endHour * 60 + endMin;
-                                    const lastSlotMin = endTotalMin - 30;
-                                    const lastSlotHour = Math.floor(lastSlotMin / 60);
-                                    const lastSlotMinute = lastSlotMin % 60;
-                                    const lastSlotTime = `${lastSlotHour.toString().padStart(2, '0')}:${lastSlotMinute.toString().padStart(2, '0')}`;
-                                    
-                                    console.log(`特別営業最終枠チェック: 選択時間=${timeStr}, 最終枠=${lastSlotTime}`);
-                                    
-                                    // 選択した時間が最終枠の場合
-                                    if (timeStr === lastSlotTime) {
-                                        const dayType = holidayName ? `特別営業（${holidayName}）` : '特別営業（日曜）';
-                                        console.log(`${dayType}の最終枠のため30分コースのみ選択可能`);
-                                        restrictCourseForSpecialLastSlot();
-                                        return;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    console.log('通常の時間枠：全コース選択可能');
-                } catch (error) {
-                    console.error('特別営業時間制限チェックエラー:', error);
-                }
-            }
 
             /* セキュリティ上の理由によりEmailJS設定をコメントアウト
             // EmailJS初期化（新しいAPI Key使用）
@@ -1898,12 +1985,33 @@
                 }
                 
                 console.log('✅ 予約登録成功:', data);
+                const savedRecord = Array.isArray(data) ? data[0] : (data || {});
+                const reservationSyncPayload = {
+                    id: savedRecord?.id || `local-${Date.now()}`,
+                    name,
+                    phone,
+                    email,
+                    course,
+                    datetime,
+                    durationMinutes: getCourseDuration(course),
+                    is_new_customer: isNewCustomer,
+                    referral_source: referralSource
+                };
+                syncCalendarReservation('create', reservationSyncPayload);
+
                 // EmailJSでGmail通知（お店・本人両方に送信）
                 console.log('メール送信開始:', { name, phone, datetime, course, email });
 
                 const resultDiv = document.getElementById('result');
                 const resetAndRefreshUI = async () => {
                     document.getElementById('reserveForm').reset();
+                    selectedDateValue = '';
+                    selectedCourseValue = '';
+                    latestTimeSlots = [];
+                    renderCourseSelect('まず予約日を選択してください');
+                    resetTimeSelect('まず日付とコースを選択してください');
+                    updateBookingStepsState({ date: true, course: false, time: false });
+                    setSubmitDisabled('まず日付と時間を選択してください');
                     if (typeof renderReservations === 'function') {
                         try {
                             await renderReservations();
@@ -1912,7 +2020,6 @@
                         }
                     }
                     await getReservationData(true);
-                    document.getElementById('date').dispatchEvent(new Event('change'));
                 };
 
                 // 予約日時を分かりやすくフォーマット
@@ -1973,45 +2080,17 @@
                 }
             });
             
-            // 時間選択時のイベントリスナー追加
-            document.getElementById('time').addEventListener('change', async function() {
-                const timeValue = this.value;
-                const dateValue = document.getElementById('date').value;
-                const timeSelectEl = document.getElementById('time');
-                const dateObj = dateValue ? new Date(dateValue + 'T00:00:00') : null;
-                
-                if (timeValue && dateValue) {
-                    enableCourseAndSubmit();
-                    
-                    // 18:30の場合は1時間コースを制限（通常営業時間）
-                    if (timeValue === '18:30') {
-                        restrictCourseFor1830();
-                        return;
+            if (timeSelectElement) {
+                timeSelectElement.addEventListener('change', function() {
+                    if (this.value && selectedCourseValue) {
+                        setSubmitEnabled();
+                        updateBookingStepsState({ date: true, course: true, time: true });
+                    } else {
+                        setSubmitDisabled('時間を選択してください');
+                        updateBookingStepsState({ date: !!selectedDateValue, course: !!selectedCourseValue, time: false });
                     }
-                    
-                    // 土曜日11:30の場合は1時間コースを制限（12時終了のため）
-                    if (timeValue === '11:30' && dateObj && dateObj.getDay() === 6) {
-                        restrictCourseForSaturdayLastSlot();
-                        return;
-                    }
-
-                    // 特別営業日の最終時間枠チェック
-                    await checkSpecialBusinessHourRestriction(dateValue, timeValue);
-
-                    const nextSlotTime = addMinutesToTimeStr(timeValue, 30);
-                    if (nextSlotTime) {
-                        const optionExists = Array.from(timeSelectEl.options).some(opt => opt.value === nextSlotTime);
-                        const nextSlotStatus = await checkScheduleOverride(dateValue, nextSlotTime);
-                        const nextSlotReserved = await isSlotReserved(dateValue, nextSlotTime);
-                        if (nextSlotStatus === 'closed' || !optionExists || nextSlotReserved) {
-                            restrictCourseForBlockedNextSlot();
-                            return;
-                        }
-                    }
-                } else {
-                    disableCourseAndSubmit('時間を選択してください');
-                }
-            });
+                });
+            }
 
 
             // 初期表示
@@ -2023,7 +2102,9 @@
             setDateInputLoading(false);
 
             // 初期状態でコースと送信ボタンを無効化
-            disableCourseAndSubmit('まず日付と時間を選択してください');
+            renderCourseSelect('まず予約日を選択してください');
+            resetTimeSelect('まず日付とコースを選択してください');
+            setSubmitDisabled('まず日付と時間を選択してください');
         }
     </script>
 

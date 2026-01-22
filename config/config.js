@@ -102,6 +102,21 @@ window.AppConfig = {
         line: 'https://line.me/R/ti/p/@osy8134l?oat_content=qr#~',
         instagramHandle: '@nagomi0510seikotuin'
     },
+
+    // カレンダー連携設定（Google Apps Script等のWebhookで利用）
+    calendarIntegration: {
+        get enabled() {
+            return !!window.AppConfig.getEnv('CALENDAR_WEBHOOK_URL', '');
+        },
+        get endpoint() {
+            return window.AppConfig.getEnv('CALENDAR_WEBHOOK_URL', '');
+        },
+        get authToken() {
+            return window.AppConfig.getEnv('CALENDAR_WEBHOOK_TOKEN', '');
+        },
+        timeout: 10000,
+        additionalHeaders: null
+    },
     
     // デバッグ設定
     debug: {
